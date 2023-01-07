@@ -18,10 +18,10 @@ public class AppliedRegionFilter extends MI2UGenerateFilter{
     @Override
     public FilterOption[] options(){
         return new FilterOption[]{
-                new FilterOptions.SliderOption("fromX", () -> fromX, f -> fromX = (int) f, 0, 500f, 1),
-                new FilterOptions.SliderOption("fromY", () -> fromY, f -> fromY = (int) f, 0, 500f, 1),
-                new FilterOptions.SliderOption("width", () -> width, f -> width = (int) f, 1f, 500f, 1),
-                new FilterOptions.SliderOption("height", () -> height, f -> height = (int) f, 1f, 500f, 1)
+                new FilterOptions.SliderFieldOption("fromX", () -> fromX, f -> fromX = (int) f, 0, 500f, 1),
+                new FilterOptions.SliderFieldOption("fromY", () -> fromY, f -> fromY = (int) f, 0, 500f, 1),
+                new FilterOptions.SliderFieldOption("width", () -> width, f -> width = (int) f, 1f, 500f, 1),
+                new FilterOptions.SliderFieldOption("height", () -> height, f -> height = (int) f, 1f, 500f, 1)
         };
     }
 

@@ -16,9 +16,9 @@ public class AdvancedOreFilter extends MI2UGenerateFilter{
     @Override
     public FilterOption[] options(){
         return new FilterOption[]{
-                new SliderOption("threshold", () -> threshold, f -> threshold = f, 0f, 1f),
-                new SliderOption("octaves", () -> octaves, f -> octaves = f, 1f, 10f),
-                new SliderOption("falloff", () -> falloff, f -> falloff = f, 0f, 1f),
+                new SliderFieldOption("threshold", () -> threshold, f -> threshold = f, 0f, 1f, 0.01f),
+                new SliderFieldOption("octaves", () -> octaves, f -> octaves = f, 1f, 10f, 0.1f),
+                new SliderFieldOption("falloff", () -> falloff, f -> falloff = f, 0f, 1f, 0.01f),
                 new BlockOption("ore", () -> ore, b -> ore = b, oresOnly),
                 new BlockOption("targetFloor", () -> targetFloor, b -> targetFloor = b, floorsOptional),
                 new BlockOption("targetOre", () -> targetOre, b -> targetOre = b, oresOptional)

@@ -176,8 +176,9 @@ public class FilterOptions{
                  table.add("@filter.option." + name);
                  TextField text = table.field(String.valueOf(getter.get()), TextField.TextFieldFilter.floatsOnly, s -> setter.get(Strings.parseFloat(s))).growX().padBottom(5).padTop(5).center().get();
                  text.setValidator(s -> Strings.parseFloat(s) >= min && Strings.parseFloat(s) <= max);
+                 text.changed(changed);
              }
-             table.button("" + Iconc.pencil, () -> {
+             table.button("" + Iconc.pencil, Styles.flatt, () -> {
                  textMode = !textMode;
                  build(table);
              }).checked(textMode).size(24f);

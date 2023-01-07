@@ -8,8 +8,8 @@ public class ScalingTransFilter extends MI2UGenerateFilter{
     @Override
     public FilterOption[] options(){
         return new FilterOption[]{
-                new FilterOptions.SliderOption("scaleX", () -> sclX, f -> sclX = f, 0.5f, 20f),
-                new FilterOptions.SliderOption("scaleY", () -> sclY, f -> sclY = f, 0.5f, 20f)
+                new FilterOptions.SliderFieldOption("scaleX", () -> sclX, f -> sclX = f, 0.5f, 20f, 0.1f),
+                new FilterOptions.SliderFieldOption("scaleY", () -> sclY, f -> sclY = f, 0.5f, 20f, 0.1f)
         };
     }
 

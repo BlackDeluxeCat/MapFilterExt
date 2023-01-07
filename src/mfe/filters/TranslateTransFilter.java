@@ -8,8 +8,8 @@ public class TranslateTransFilter extends MI2UGenerateFilter{
     @Override
     public FilterOption[] options(){
         return new FilterOption[]{
-                new FilterOptions.SliderOption("offsetX", () -> offX, f -> offX = f, -100f, 100f),
-                new FilterOptions.SliderOption("offsetY", () -> offY, f -> offY = f, -100f, 100f)
+                new FilterOptions.SliderFieldOption("offsetX", () -> offX, f -> offX = f, -100f, 100f, 1f),
+                new FilterOptions.SliderFieldOption("offsetY", () -> offY, f -> offY = f, -100f, 100f, 1f)
         };
     }
 

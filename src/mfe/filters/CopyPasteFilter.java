@@ -11,6 +11,8 @@ import mindustry.maps.filters.*;
 import mindustry.world.*;
 import mindustry.world.blocks.environment.*;
 
+import static mfe.filters.FilterOptions.*;
+
 public class CopyPasteFilter extends MI2UGenerateFilter{
     private static TileBuffer[][] buffers;
 
@@ -21,14 +23,14 @@ public class CopyPasteFilter extends MI2UGenerateFilter{
     @Override
     public FilterOption[] options(){
         return new FilterOption[]{
-            new FilterOptions.SliderFieldOption("fromX", () -> fromX, f -> fromX = f, 0, 500f, 1),
-            new FilterOptions.SliderFieldOption("fromY", () -> fromY, f -> fromY = f, 0, 500f, 1),
-            new FilterOptions.SliderFieldOption("width", () -> width, f -> width = f, 1f, 500f, 1),
-            new FilterOptions.SliderFieldOption("height", () -> height, f -> height = f, 1f, 500f, 1),
-            new FilterOptions.SliderFieldOption("toX", () -> toX, f -> toX = f, 0f, 500f, 1),
-            new FilterOptions.SliderFieldOption("toY", () -> toY, f -> toY = f, 0f, 500f, 1),
-            new FilterOptions.ToggleOption("targetWall", () -> copyBlock, f -> copyBlock = f),
-            new FilterOptions.ToggleOption("targetOre", () -> copyOverlay, f -> copyOverlay = f)
+            new SliderFieldOption("fromX", () -> fromX, f -> fromX = f, 0, 500f, 1),
+            new SliderFieldOption("fromY", () -> fromY, f -> fromY = f, 0, 500f, 1),
+            new SliderFieldOption("width", () -> width, f -> width = f, 1f, 500f, 1),
+            new SliderFieldOption("height", () -> height, f -> height = f, 1f, 500f, 1),
+            new SliderFieldOption("toX", () -> toX, f -> toX = f, 0f, 500f, 1),
+            new SliderFieldOption("toY", () -> toY, f -> toY = f, 0f, 500f, 1),
+            new ToggleOption("targetWall", () -> copyBlock, f -> copyBlock = f),
+            new ToggleOption("targetOre", () -> copyOverlay, f -> copyOverlay = f)
         };
     }
 

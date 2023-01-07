@@ -8,7 +8,7 @@ public class RotateTransFilter extends MI2UGenerateFilter{
     @Override
     public FilterOption[] options(){
         return new FilterOption[]{
-                new FilterOptions.SliderOption("rotation", () -> rotate, f -> rotate = f, 0f, 360f)
+                new FilterOptions.SliderFieldOption("rotation", () -> rotate, f -> rotate = f, 0f, 360f, 1f)
         };
     }
 

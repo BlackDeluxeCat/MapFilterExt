@@ -15,9 +15,9 @@ public class AdvancedNoiseFilter extends MI2UGenerateFilter{
     @Override
     public FilterOption[] options(){
         return new FilterOption[]{
-                new SliderOption("threshold", () -> threshold, f -> threshold = f, 0f, 1f),
-                new SliderOption("octaves", () -> octaves, f -> octaves = f, 1f, 10f),
-                new SliderOption("falloff", () -> falloff, f -> falloff = f, 0f, 1f),
+                new SliderFieldOption("threshold", () -> threshold, f -> threshold = f, 0f, 1f, 0.01f),
+                new SliderFieldOption("octaves", () -> octaves, f -> octaves = f, 1f, 10f, 0.1f),
+                new SliderFieldOption("falloff", () -> falloff, f -> falloff = f, 0f, 1f, 0.01f),
                 new BlockOption("targetFloor", () -> target, b -> target = b, FilterOption.floorsOptional),
                 new BlockOption("floor", () -> floor, b -> floor = b, FilterOption.floorsOptional),
                 new BlockOption("targetWall", () -> target2, b -> target2 = b, FilterOption.wallsOptional),

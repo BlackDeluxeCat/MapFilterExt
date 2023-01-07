@@ -16,11 +16,11 @@ public class GridFilter extends MI2UGenerateFilter{
     @Override
     public FilterOption[] options(){
         return new FilterOption[]{
-                new SliderOption("width", () -> width, f -> width = f, 1f, 500f),
-                new SliderOption("height", () -> height, f -> height = f, 1f, 500f),
-                new SliderOption("offsetX", () -> offX, f -> offX = f, -200f, 200f),
-                new SliderOption("offsetY", () -> offY, f -> offY = f, -200f, 200f),
-                new SliderOption("stroke", () -> stroke, f -> stroke = f, 1f, 100f),
+                new SliderFieldOption("width", () -> width, f -> width = f, 1f, 500f, 1f),
+                new SliderFieldOption("height", () -> height, f -> height = f, 1f, 500f, 1f),
+                new SliderFieldOption("offsetX", () -> offX, f -> offX = f, -200f, 200f, 1f),
+                new SliderFieldOption("offsetY", () -> offY, f -> offY = f, -200f, 200f, 1f),
+                new SliderFieldOption("stroke", () -> stroke, f -> stroke = f, 1f, 100f, 1f),
                 new BlockOption("targetFloor", () -> target, b -> target = b, floorsOptional),
                 new BlockOption("floor", () -> floor, b -> floor = b, floorsOptional),
                 new BlockOption("targetWall", () -> target2, b -> target2 = b, wallsOptional),
