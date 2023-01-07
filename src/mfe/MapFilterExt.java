@@ -2,21 +2,31 @@ package mfe;
 
 import arc.*;
 import arc.func.*;
+import arc.scene.ui.*;
+import arc.scene.ui.layout.*;
 import arc.util.*;
 import mfe.filters.*;
+import mfe.guides.*;
 import mindustry.game.EventType.*;
 import mindustry.io.*;
 import mindustry.maps.*;
-import mindustry.maps.filters.GenerateFilter;
+import mindustry.maps.filters.*;
 import mindustry.mod.*;
+import mindustry.ui.*;
 
-import java.util.Arrays;
+import java.util.*;
+
+import static mfe.guides.GuideSeqImage.*;
+import static mindustry.Vars.ui;
 
 public class MapFilterExt extends Mod{
 
     public MapFilterExt(){
         Events.on(ClientLoadEvent.class, e -> {
+            initStyles();
             addFilters();
+            ui.editor.shown(GuideSeqImage::rebuild);
+            buildSelect();
         });
     }
 
@@ -39,5 +49,12 @@ public class MapFilterExt extends Mod{
         Log.info("Adding New Filters... Filters Size: " + newArr.length);
         GenerateFilter ins = filter.get();
         JsonIO.json.addClassTag(Strings.camelize(ins.getClass().getSimpleName().replace("Filter", "")), ins.getClass());
+    }
+
+    public static TextButton.TextButtonStyle titleTogglet;
+
+    public static void initStyles(){
+        titleTogglet = new TextButton.TextButtonStyle(Styles.squareTogglet);
+        titleTogglet.up = Styles.black;
     }
 }
