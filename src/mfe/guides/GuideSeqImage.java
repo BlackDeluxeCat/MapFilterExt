@@ -21,8 +21,8 @@ public class GuideSeqImage extends GridImage{
     public static Seq<BaseGuide> guides = new Seq<>(true);
     public static BaseDialog selectDialog = new BaseDialog("Select New Guide Type");
     protected static ScrollPane paneList;
-    protected static Table main = new Table(), mainParent;
-    protected static boolean minimize = false, pop = true;
+    protected static Table main = new Table();
+    protected static boolean minimize = false;
     public int imageWidth, imageHeight;
 
     public GuideSeqImage(int w, int h){
@@ -49,31 +49,15 @@ public class GuideSeqImage extends GridImage{
     public static void rebuild(){
         build(main);
         MI2Utils.setValue(ui.editor.getView(), "image", guidesImage);
-        if(pop){
-            var view = ui.editor.getView();
-            view.parent.addChild(main);
-            main.setFillParent(true);
-            main.top().left();
-        }else{
-            main.setFillParent(false);
-            Table toolt = (Table)((Table)ui.editor.getChildren().first()).getChildren().first();
-            if(toolt.find(e -> e == mainParent) == null){
-                toolt.row();
-                toolt.table(tt -> mainParent = tt).growX();
-            }
-            mainParent.clear();
-            mainParent.add(main).growX();
-            main.update(null);
-        }
+        var view = ui.editor.getView();
+        view.parent.addChild(main);
+        main.setFillParent(true);
+        main.top().left();
     }
 
     public static void build(Table table){
         table.clear();
         table.table(tit -> {
-            tit.button(pop ? "<" : ">", Styles.flatBordert, () -> {
-                pop = !pop;
-                rebuild();
-            }).size(28f).get().getLabel().setColor(Color.gray);
             tit.button("MFE-Guides", MapFilterExt.titleTogglet, () -> {
                 minimize = !minimize;
                 rebuild();

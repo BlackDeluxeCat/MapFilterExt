@@ -18,7 +18,7 @@ import static mfe.guides.GuideSeqImage.*;
 public class BaseGuide{
     public String name;
     public Vec2 off = new Vec2();
-    public Color color = new Color(Color.salmon);
+    public Color color = new Color(Color.salmon).a(0.5f);
     public boolean enable = true, axis = false;
     public Table buttons = new Table();
     protected static final Rect drawRect = new Rect(), tileRect = new Rect();

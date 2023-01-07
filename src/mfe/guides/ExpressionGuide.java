@@ -8,18 +8,22 @@ import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
 import mindustry.gen.*;
+import mindustry.ui.*;
 
 import java.util.regex.*;
 
 import static mfe.MapFilterExt.titleTogglet;
+import static mindustry.Vars.editor;
 
 public class ExpressionGuide extends BaseGuide{
     public Expression exp = new Expression(), strokeexp = new Expression();
     public boolean strokeGraph = true;
     public ExpressionGuide(){
         name = "Expression";
+        exp.parse("x");
         strokeexp.parse("4");
         buttons.button("" + Iconc.crafting, titleTogglet, () -> strokeGraph = !strokeGraph).checked(strokeGraph);
+        buttons.button("" + Iconc.fill, Styles.flatt, this::fill);
     }
 
     @Override
@@ -29,24 +33,39 @@ public class ExpressionGuide extends BaseGuide{
         Draw.color(color);
         //Be careful! ix(), iy() is the offset of overlay element, add to final coords!
         cons((tx, ty, w, tmp) -> {
-            float sy = (strokeGraph && strokeexp.vaild) ? yt2i(strokeexp.get(tx)) : 4f;
-            if((tileRect.contains(tx, ty) || tileRect.contains(tx, sy)) && Math.abs(ty - sy) < getIH()){
-                Fill.crect(iposx() + xt2i(tx + off.x), iposy() + yt2i(ty + off.y), w, sy);
+            float sy = (strokeGraph && strokeexp.vaild) ? strokeexp.get(tx) : 1f;
+            if((tileRect.contains(tx, ty) || tileRect.contains(tx, ty + sy))){
+                Fill.crect(iposx() + xt2i(tx + off.x), iposy() + yt2i(ty + off.y), xt2i(w), yt2i(sy));
             }
         });
     }
 
     public void fill(){
+        float brush = editor.brushSize;
+        editor.brushSize = 1f;
+
+        cons((tx, ty, w, tmp) -> {
+            float sy = (strokeGraph && strokeexp.vaild) ? strokeexp.get(tx) : 1f;
+            int tgtx = Mathf.floor(tx);
+            for(int tgty = Mathf.floor(Math.min(ty, ty + sy)); tgty < Math.max(ty, ty + sy); tgty++){
+                if(tgtx < getIW() && tgtx >= 0 && tgty < getIH() && tgty >= 0){
+                    editor.drawBlocks(tgtx, tgty, true, editor.drawBlock.isOverlay(), t -> true);
+                }
+            }
+        });
+
+        editor.brushSize = brush;
     }
 
     //for editor users, tile axis are more common.
     public void cons(Floatc4 c4){
         float x = 0f;
-        float step = 0.2f;
+        float step = 0.3f;
         float lasty = exp.get(x), prey;
         while(x < getIW()){
+            step = Mathf.clamp(step, 0.02f, 0.5f);
             c4.get(x, lasty, step, 0f);
-            x += Mathf.clamp(step, 0.01f, 0.5f);
+            x += step;
             prey = exp.get(x);
             if(Math.abs(prey - lasty) > 0.5f){
                 step /= 2f;
