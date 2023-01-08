@@ -43,7 +43,7 @@ Separated from [MI2U](https://github.com/BlackDeluxeCat/MI2-Utilities-Java)
 > 
 > 操作ui在编辑器左上角
 
-<img width="794" alt="屏幕截图 2023-01-08 195214" src="https://user-images.githubusercontent.com/65377021/211194678-a5736fcb-3794-4408-9432-7ba837e280d4.png">
+<img width="793" alt="屏幕截图 2023-01-08 200247" src="https://user-images.githubusercontent.com/65377021/211195002-aaf909c5-79fb-4218-99ba-9a3aaa0dbb5a.png">
 
 # 开发者提示
 不兼容信息：
