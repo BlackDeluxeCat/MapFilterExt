@@ -3,7 +3,7 @@ Copypaste, modified noise, grid. They work with a coords-transform kit.
 
 Separated from [MI2U](https://github.com/BlackDeluxeCat/MI2-Utilities-Java)
 
-# 内容
+# 内容（v1.1）
 ## 一套地形筛选器
 ### 功能地筛
 改良噪声，改良矿物噪声
@@ -22,7 +22,9 @@ Separated from [MI2U](https://github.com/BlackDeluxeCat/MI2-Utilities-Java)
 ### 坐标变换（修饰地筛）
 将它们放在其他地筛前，对遇到的第一个功能地筛叠加应用。
 
-坐标平移、伸缩、旋转、极坐标投射。
+坐标平移、伸缩、旋转、极坐标投射、应用区域限制。
+
+<img width="794" alt="屏幕截图 2023-01-08 194202" src="https://user-images.githubusercontent.com/65377021/211194653-649e661b-28cf-4b50-9578-f9a8224ef2d2.png">
 
 ### 提醒
 原版不能处理这些筛选器，请不要保存到地图属性里！
@@ -41,6 +43,7 @@ Separated from [MI2U](https://github.com/BlackDeluxeCat/MI2-Utilities-Java)
 > 
 > 操作ui在编辑器左上角
 
+<img width="794" alt="屏幕截图 2023-01-08 195214" src="https://user-images.githubusercontent.com/65377021/211194678-a5736fcb-3794-4408-9432-7ba837e280d4.png">
 
 # 开发者提示
 不兼容信息：
