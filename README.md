@@ -8,6 +8,7 @@ Separated from [MI2U](https://github.com/BlackDeluxeCat/MI2-Utilities-Java)
 ### 功能地筛
 改良噪声，改良矿物噪声
 > 噪声图像支持使用修饰地筛做变换
+> 
 > 可以指定要替换的目标
 
 生成网格
@@ -15,6 +16,7 @@ Separated from [MI2U](https://github.com/BlackDeluxeCat/MI2-Utilities-Java)
 
 复制粘贴
 > 从地图指定位置复制一块区域，粘贴到指定位置
+> 
 > 可选的只应用到墙、地板、矿物
 
 ### 坐标变换（修饰地筛）
@@ -27,11 +29,16 @@ Separated from [MI2U](https://github.com/BlackDeluxeCat/MI2-Utilities-Java)
 
 ## 一套辅助线工具
 **替换了原版的网格线工具。**
+
 自定义的辅助线
 > 基于函数解析式，众多基本函数可用
+> 
 > 线宽也可以是解析式，从而变线成形状
+> 
 > 极坐标/直角坐标切换
+> 
 > 一键填充图像覆盖区域（用1x1笔刷）
+> 
 > 操作ui在编辑器左上角
 
 
