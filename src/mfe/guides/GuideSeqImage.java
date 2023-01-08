@@ -63,7 +63,7 @@ public class GuideSeqImage extends GridImage{
                 rebuild();
             }).grow().checked(minimize);
             tit.button("+", Styles.flatBordert, GuideSeqImage::showSelect).size(28f);
-        }).fillX().minWidth(178f);
+        }).fillX().minWidth(200f);
 
         if(minimize) return;
         table.row();
@@ -75,7 +75,7 @@ public class GuideSeqImage extends GridImage{
             }
         }).with(p -> {
             paneList = p;
-            p.setFadeScrollBars(true);
+            p.setFlickScroll(false);
             p.setScrollBarPositions(true, false);
             p.setScrollingDisabledX(true);
             p.exited(() -> {
@@ -92,10 +92,18 @@ public class GuideSeqImage extends GridImage{
 
     public static void buildSelect(){
         selectDialog.addCloseButton();
-        selectDialog.cont.defaults().size(150f, 64f);
-        selectDialog.cont.button("@guide.base", Styles.flatBordert, () -> addNewGuide(BaseGuide::new));
-        selectDialog.cont.button("@guide.vanilla", Styles.flatBordert, () -> addNewGuide(VanillaGrid::new));
-        selectDialog.cont.button("@guide.expression", Styles.flatBordert, () -> addNewGuide(ExpressionGuide::new));
+        selectDialog.cont.pane(t -> {
+            t.background(Styles.grayPanel);
+            t.defaults().width(500f).minHeight(100f).top();
+            //selectDialog.cont.button("@guide.base", Styles.flatBordert, () -> addNewGuide(BaseGuide::new));
+            t.button("@guide.vanilla", Styles.flatBordert, () -> addNewGuide(VanillaGrid::new));
+            t.button("@guide.expression", Styles.flatBordert, () -> addNewGuide(ExpressionGuide::new));
+
+            t.row();
+
+            t.labelWrap("@guide.vanilla.info").fill();
+            t.labelWrap("@guide.expression.info").fill();
+        }).growY();
     }
 
     private static void addNewGuide(Prov<BaseGuide> getter){

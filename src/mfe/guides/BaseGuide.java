@@ -1,7 +1,9 @@
 package mfe.guides;
 
+import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
+import arc.input.*;
 import arc.math.*;
 import arc.math.geom.*;
 import arc.scene.event.*;
@@ -17,28 +19,25 @@ import static mfe.guides.GuideSeqImage.*;
 
 public class BaseGuide{
     public String name;
-    public Vec2 off = new Vec2();
     public Color color = new Color(Color.salmon).a(0.5f);
+    public Vec2 off = new Vec2();
+    public float rotDegree = 0f;
     public boolean enable = true, axis = false;
     public Table buttons = new Table();
-    protected static final Rect drawRect = new Rect(), tileRect = new Rect();
+    public static final Rect drawRect = new Rect(), tileRect = new Rect();
 
     public BaseGuide(){
-        name = "Base: sin";
+        name = "BaseDebug";
         buttons.background(Styles.black3);
         buttons.defaults().size(24f).pad(2f);
-        buttons.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + name + " ?", () -> {
-            guides.remove(this);
-            rebuild();
-        })).get().getLabel().setColor(Color.scarlet);
-        buttons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis);
-        buttons.button("" + Iconc.pick, Styles.flatt, () -> Vars.ui.picker.show(color, true, c -> color.set(c))).update(b -> b.getLabel().setColor(color));
     }
 
     public void draw(){
+        /*
         if(axis) drawAxis();
         Draw.color(Color.white, 0.5f);
         Fill.rect(BaseGuide.drawRect);
+         */
     }
 
     public void drawAxis(){
@@ -53,53 +52,77 @@ public class BaseGuide{
         table.background(Styles.flatOver);
         table.image().fillX().color(Color.white).height(2f);
         table.row();
-        table.defaults().pad(3f).left();
+        table.defaults().pad(3f);
 
         table.table(title -> {
+            title.background(Styles.black);
             title.button(name, titleTogglet, () -> enable = !enable).growX().pad(2f).with(b -> {
-                b.update(() -> b.getLabel().setColor(color.r, color.g, color.b, color.a * (enable ? 1f : 0.4f)));
-            }).checked(enable).fill();
-            title.row();
-            title.add(buttons).left().fill();
+                b.update(() -> b.getLabel().setColor(color.r, color.g, color.b, color.a * (enable ? 1f : 0.5f)));
+            }).checked(enable).width(176f);
+
+            title.button("" + Iconc.pick, Styles.flatt, () -> Vars.ui.picker.show(color, true, c -> color.set(c)))
+                    .update(b -> b.getLabel().setColor(color)).size(24f).pad(2f);
+
+            title.button("" + Iconc.up, Styles.flatt, () -> {
+                int self = guides.indexOf(this);
+                int tgt = Mathf.clamp(self - 1, 0, guides.size - 1);
+                guides.swap(self, tgt);
+                rebuild();
+            }).size(24f).pad(2f);
+
+            title.button("" + Iconc.down, Styles.flatt, () -> {
+                int self = guides.indexOf(this);
+                int tgt = Mathf.clamp(self + 1, 0, guides.size - 1);
+                guides.swap(self, tgt);
+                rebuild();
+            }).size(24f).pad(2f);
+
+            title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + name + " ?", () -> {
+                guides.remove(this);
+                rebuild();
+            })).size(24f).pad(2f).get().getLabel().setColor(Color.scarlet);
         }).growX();
 
         table.row();
 
-        table.table(this::buildOffset);
+        table.add(buttons).left().fill();
+
         table.row();
+
         table.table(this::buildContent).get().background(Styles.black6);
     }
 
     /** Add offset fields */
-    public void buildOffset(Table table){
+    public void buildOffsetConfigure(Table table){
         table.background(Styles.black3);
-        Label lx, ly;
-        TextField fx, fy;
         TextField.TextFieldFilter filter = (field, c) -> TextField.TextFieldFilter.floatsOnly.acceptChar(field, c) || ((c == '-' && field.getCursorPosition() == 0 && !field.getText().contains("-")));
-        lx = table.add("Δx:").get();
-        fx = table.field("0", filter, s -> off.x = Strings.parseFloat(s)).size(120f, 18f).get();
+        Cons3<Cons<Float>, Prov<Float>, String> builder = (setter, getter, name) -> {
+            Label l = table.add(name).get();
+            TextField f = table.field("0", filter, s -> setter.get(Strings.parseFloat(s))).size(120f, 18f).get();
+            l.addListener(new ElementGestureListener(){
+                @Override
+                public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
+                    super.pan(event, x, y, deltaX, deltaY);
+                    cancelScroll();
+                    setter.get((float)Mathf.floor(getter.get() + deltaX / 2f));
+                    f.setText(String.valueOf(getter.get()));
+                }
+
+                @Override
+                public void tap(InputEvent event, float x, float y, int count, KeyCode button){
+                    super.tap(event, x, y, count, button);
+                    if(count >= 2){
+                        setter.get(0f);
+                        f.setText(String.valueOf(getter.get()));
+                    }
+                }
+            });
+        };
+        builder.get(x -> off.x = x, () -> off.x, Iconc.move + "dx");
         table.row();
-        ly = table.add("Δy:").get();
-        fy = table.field("0", filter, s -> off.y = Strings.parseFloat(s)).size(120f, 18f).get();
-        //gesture
-        lx.addListener(new ElementGestureListener(){
-            @Override
-            public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
-                super.pan(event, x, y, deltaX, deltaY);
-                cancelScroll();
-                off.x = Mathf.floor(off.x + deltaX / 2f);
-                fx.setText(String.valueOf(off.x));
-            }
-        });
-        ly.addListener(new ElementGestureListener(){
-            @Override
-            public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
-                super.pan(event, x, y, deltaX, deltaY);
-                cancelScroll();
-                off.y = Mathf.floor(off.y + deltaX / 2f);
-                fy.setText(String.valueOf(off.y));
-            }
-        });
+        builder.get(y -> off.y = y, () -> off.y, Iconc.move + "dy");
+        table.row();
+        builder.get(r -> rotDegree = r, () -> rotDegree, Iconc.rotate + "rot");
     }
 
     public void buildContent(Table table){}

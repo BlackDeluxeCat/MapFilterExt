@@ -5,7 +5,7 @@ import arc.graphics.g2d.*;
 
 public class VanillaGrid extends BaseGuide{
     public VanillaGrid(){
-        name = "Vanilla Grid";
+        name = "@guide.vanilla";
         color.set(Color.gray);
     }
 

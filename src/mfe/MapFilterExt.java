@@ -2,6 +2,7 @@ package mfe;
 
 import arc.*;
 import arc.func.*;
+import arc.scene.style.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.util.*;
@@ -52,9 +53,15 @@ public class MapFilterExt extends Mod{
     }
 
     public static TextButton.TextButtonStyle titleTogglet;
-
+    public static TextureRegionDrawable uiStepStatic, uiStepDynamic, uiStrokeCenter, uiStrokeAdd, uiCoordsysRect, uiCoordsysPolar;
     public static void initStyles(){
         titleTogglet = new TextButton.TextButtonStyle(Styles.squareTogglet);
         titleTogglet.up = Styles.black;
+        uiStepStatic = new TextureRegionDrawable(Core.atlas.find("mapfilterext-ui-step-static"));
+        uiStepDynamic = new TextureRegionDrawable(Core.atlas.find("mapfilterext-ui-step-dynamic"));
+        uiStrokeCenter = new TextureRegionDrawable(Core.atlas.find("mapfilterext-ui-stroke-center"));
+        uiStrokeAdd = new TextureRegionDrawable(Core.atlas.find("mapfilterext-ui-stroke-add"));
+        uiCoordsysRect = new TextureRegionDrawable(Core.atlas.find("mapfilterext-ui-coordsys-rect"));
+        uiCoordsysPolar = new TextureRegionDrawable(Core.atlas.find("mapfilterext-ui-coordsys-polar"));
     }
 }
