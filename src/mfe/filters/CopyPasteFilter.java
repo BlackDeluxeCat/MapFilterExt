@@ -34,6 +34,15 @@ public class CopyPasteFilter extends MI2UGenerateFilter{
         };
     }
 
+    /*
+    @Override
+    public void apply(Tiles tiles, GenerateInput in){
+        long[][] buffer = new long[(int)width][(int)height];
+
+    }
+     */
+
+    //TODO override apply(Tiles tiles, GenerateInput in)
     @Override
     public void apply(GenerateInput in){
         //copy to buffers before first tile is processed
@@ -84,7 +93,7 @@ public class CopyPasteFilter extends MI2UGenerateFilter{
         public TileBuffer(Tile tile){
             this.floor = tile.floor();
             this.overlay = tile.overlay();
-            this.wall = tile.block() instanceof Prop || tile.block() instanceof TreeBlock ? tile.block() : Blocks.air;
+            this.wall = !tile.block().hasBuilding() ? tile.block() : Blocks.air;
         }
     }
 }
