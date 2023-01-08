@@ -54,6 +54,7 @@ public class ExpressionGuide extends BaseGuide{
             Draw.color(Color.black, 0.8f);
             Lines.stroke(8f);
             Lines.line(iposx(), iposy() + yt2i(off.y), iposx() + getW(), iposy() + yt2i(off.y));
+            Lines.line(iposx() + xt2i(off.x), iposy() + yt2i(off.y - 5f), iposx() + xt2i(off.x), iposy() + yt2i(off.y + 5f));
             for(int i = 1; i < getIH() / 50f; i++){
                 Lines.circle(iposx() + xt2i(off.x), iposy() + yt2i(off.y), xt2i(i * 50f));
             }
@@ -289,6 +290,7 @@ public class ExpressionGuide extends BaseGuide{
         ln("ln", a -> Mathf.log(a, Mathf.E),5),
         lg("lg", a -> Mathf.log(a, 10),5),
         abs("abs", Math::abs,5),
+        sgn("sgn", Mathf::sign,5),
         floor("floor", Mathf::floor,5),
         ceil("ceil", Mathf::ceil,5),
         round("round", a -> Mathf.round(a),5),
