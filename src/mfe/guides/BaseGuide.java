@@ -52,7 +52,7 @@ public class BaseGuide{
         table.background(Styles.flatOver);
         table.image().fillX().color(Color.white).height(2f);
         table.row();
-        table.defaults().pad(3f);
+        table.defaults().padLeft(4f).padRight(4f);
 
         table.table(title -> {
             title.background(Styles.black);
@@ -89,7 +89,7 @@ public class BaseGuide{
 
         table.row();
 
-        table.table(this::buildContent).get().background(Styles.black6);
+        table.table(this::buildContent).fill().get().background(Styles.black6);
     }
 
     /** Add offset fields */
