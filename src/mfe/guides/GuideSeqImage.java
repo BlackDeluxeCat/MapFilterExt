@@ -3,10 +3,10 @@ package mfe.guides;
 import arc.*;
 import arc.func.*;
 import arc.graphics.*;
-import arc.graphics.g2d.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
+import arc.util.*;
 import mfe.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
@@ -62,6 +62,10 @@ public class GuideSeqImage extends GridImage{
                 minimize = !minimize;
                 rebuild();
             }).grow().checked(minimize);
+            tit.label(() -> "Mem:" + (int)(Core.app.getJavaHeap() / 1024 / 1024)).color(Tmp.c1.set(Color.green).a(0.5f)).style(Styles.outlineLabel).name("memory").width(0.5f).with(l -> {
+                l.setAlignment(Align.bottomRight);
+                l.setFontScale(0.75f);
+            }).fillY();
             tit.button("+", Styles.flatBordert, GuideSeqImage::showSelect).size(28f);
         }).fillX().minWidth(200f);
 

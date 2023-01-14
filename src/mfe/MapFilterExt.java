@@ -2,6 +2,9 @@ package mfe;
 
 import arc.*;
 import arc.func.*;
+import arc.input.*;
+import arc.math.*;
+import arc.scene.event.*;
 import arc.scene.style.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
@@ -64,4 +67,34 @@ public class MapFilterExt extends Mod{
         uiCoordsysRect = new TextureRegionDrawable(Core.atlas.find("mapfilterext-ui-coordsys-rect"));
         uiCoordsysPolar = new TextureRegionDrawable(Core.atlas.find("mapfilterext-ui-coordsys-polar"));
     }
+
+    public static TextField.TextFieldFilter filter = (field, c) -> TextField.TextFieldFilter.floatsOnly.acceptChar(field, c) || ((c == '-' && field.getCursorPosition() == 0 && !field.getText().contains("-")));
+
+    public static Cons4<Floatc, Floatp, Label, TextField> addDragableFloatInput = (setter, getter, l, f) -> {
+        f.setText(String.valueOf(getter.get()));
+        f.setFilter(filter);
+        f.changed(() -> {
+            if(f.isValid()){
+                setter.get(Strings.parseFloat(f.getText()));
+            }
+        });
+        l.addListener(new ElementGestureListener(){
+            @Override
+            public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
+                super.pan(event, x, y, deltaX, deltaY);
+                cancelScroll();
+                setter.get((float)Mathf.floor(getter.get() + deltaX / 2f));
+                f.setText(String.valueOf(getter.get()));
+            }
+
+            @Override
+            public void tap(InputEvent event, float x, float y, int count, KeyCode button){
+                super.tap(event, x, y, count, button);
+                if(count >= 2){
+                    setter.get(0f);
+                    f.setText(String.valueOf(getter.get()));
+                }
+            }
+        });
+    };
 }

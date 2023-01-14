@@ -5,27 +5,37 @@ import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.math.*;
 import arc.math.geom.*;
+import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
+import mfe.math.*;
 import mindustry.gen.*;
 import mindustry.ui.*;
-
-import java.util.regex.*;
 
 import static mfe.MapFilterExt.*;
 import static mindustry.Vars.*;
 
-public class ExpressionGuide extends BaseGuide{
+public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     public Expression exp = new Expression(), strokeexp = new Expression();
     public boolean staticStep = true, centerStroke = true, polar = false;
-    private static final IntSet tiles = new IntSet(512);
-    private static final IntSeq tilesSort = new IntSeq();
+    protected static final IntSet tiles = new IntSet(512);
+    protected static final IntSeq tilesSort = new IntSeq();
+    /**Handle vars.*/
+    protected final Seq<Variable> vars = new Seq<>();
+    protected Variable varx, vary;
+    protected Table varsTable;
 
     public ExpressionGuide(){
+        vars.add(varx = new Variable("x"));
+        vars.add(vary = new Variable("y"));
         name = "@guide.expression";
-        exp.parse("x");
-        strokeexp.parse("4");
+        exp.parse("x", this);
+        strokeexp.parse("4", this);
+
+        varsTable = new Table();
+        buildVars(varsTable);
+
         buttons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis);
         buttons.button(polar ? uiCoordsysPolar : uiCoordsysRect, Styles.flati, 24f, () -> {}).with(b -> {
             b.clicked(() -> {
@@ -111,13 +121,15 @@ public class ExpressionGuide extends BaseGuide{
         var point2 = Tmp.v2;
         float x = 0f;
         float step = 0.1f;
-        float fy = exp.get(x), prey;
+        varx.value = x;
+        float fy = exp.get(), prey;
         while(x < getIW()){
             step = Mathf.clamp(step, 0.02f, 0.5f);
 
             //polar won't apply offset to x in function, and x is scaled to [0, 2pi]
             float inputx = polar ? (2 * Mathf.pi * x / getIW()):x-off.x;
-            float sy = (strokeexp.vaild ? strokeexp.get(inputx) : 1f);
+            varx.value = inputx;
+            float sy = (strokeexp.vaild ? strokeexp.get() : 1f);
 
             if(polar){
                 point.set(1f, 0f).scl(fy - (centerStroke ? sy/2f : 0f)).rotateRad(inputx).rotate(rotDegree).add(off);
@@ -129,7 +141,7 @@ public class ExpressionGuide extends BaseGuide{
             c3.get(point, point2, step);
 
             x += step;
-            prey = exp.get(inputx) + (polar?0f:off.y);
+            prey = exp.get() + (polar?0f:off.y);
             if(staticStep){
                 step = 0.1f;
             }else if(Math.abs(prey - fy) > 0.5f){
@@ -149,7 +161,9 @@ public class ExpressionGuide extends BaseGuide{
 
         table.table(tline -> {
             tline.add("f(x)=");
-            tline.field(exp.text, s -> exp.parse(s)).update(f -> {
+            tline.field(exp.text, s -> {
+                if(exp.parse(s, this)) buildVars(varsTable);
+            }).update(f -> {
                 f.color.set(exp.vaild ? Color.white : Color.scarlet);
             }).growX();
             tline.row();
@@ -161,198 +175,38 @@ public class ExpressionGuide extends BaseGuide{
 
         table.table(tfill -> {
             tfill.add("s(x)=");
-            tfill.field(strokeexp.text, s -> strokeexp.parse(s)).update(f -> {
+            tfill.field(strokeexp.text, s -> {
+                if(strokeexp.parse(s, this)) buildVars(varsTable);
+            }).update(f -> {
                 f.color.set(strokeexp.vaild ? Color.white : Color.scarlet);
             }).growX();
             tfill.row();
             tfill.add();
             tfill.label(() -> strokeexp.text).height(0.1f).color(Color.clear).padLeft(50f);
         }).left();
+
+        table.row();
+
+        table.add(varsTable).fill();
     }
 
-    public class Expression{
-        /** just a sign of argument. */
-        private static final FloatFloatf varx = f -> f;
-        /** RPN in stack. */
-        Seq<Object> rpn = new Seq<>();
-        //static Pattern pattern = Pattern.compile("(?=(\\d+(\\.\\d*)?|x|\\(|\\)|[+\\-*\\\\^]|([A-WYZa-wyz]([A-Za-z0-9_]+)?)))");    //split before/behind any number, x, (, )
-        static Pattern pattern = Pattern.compile(" |,|(?=x|\\(|\\))|(?<=x|\\(|\\))");  //just use space.
-        FloatSeq stk = new FloatSeq();
-        public boolean vaild = false;
-        public String text;
-        public Expression(){}
-
-        /** parse a string to RPN. */
-        public boolean parse(String str){
-            this.text = str;
-            rpn.clear();
-            int arys = 0, consumes = 0, braceL = 0, braceR = 0;
-            Seq<Object> seq = new Seq<>();
-            try{
-                String[] sps = pattern.split(str);
-
-                for(String sp : sps){
-
-                    boolean matched = false;
-                    if(sp.equals("(")){
-                        seq.add(sp);
-                        braceL += 1;
-                        continue;
-                    }
-                    if(sp.equals(")")){
-                        while(!seq.isEmpty()){
-                            Object top = seq.pop();
-                            if(top.equals("(")) break;
-                            rpn.add(top);
-                        }
-                        braceR += 1;
-                        continue;
-                    }
-                    /*this sort brace params in a ordinal stack.
-                    if(sp.equals(",")){
-                        seq.add(rpn.pop());
-                        continue;
-                    }
-                     */
-
-                    for(var op : Ops.values()){
-                        if(op.match(sp)){
-                            if(op.op0 != null){
-                                rpn.add(op.op0.get());   //constant
-                                arys += 1;
-                            }else{
-                                while(!seq.isEmpty() && seq.peek() instanceof Ops prev && prev.l > op.l){
-                                    rpn.add(seq.pop());
-                                }
-                                seq.add(op);
-                            }
-                            consumes += Mathf.maxZero(op.ary - 1);
-                            matched = true;
-                            break;
-                        }
-                    }
-                    if(matched) continue;
-
-                    if(sp.equals("x")){
-                        rpn.add(varx);
-                        arys += 1;
-                        continue;
-                    }
-                    if(sp.isEmpty()) continue;
-                    rpn.add(Float.valueOf(sp));
-                    arys += 1;
-                }
-
-                while(!seq.isEmpty()){
-                    rpn.add(seq.pop());
-                }
-
-                get(1f);
-            }catch(Exception err){
-                vaild = false;
-                Log.err("Failure parsing expression: " + str, err);
-                return false;
-            }
-            vaild = (arys - consumes == 1) && (braceL == braceR);
-            return vaild;
-        }
-
-        /** get f(x) with float argument. */
-        public float get(float x){
-            if(!vaild) return 0f;
-            stk.clear();
-            for(int i = 0; i < rpn.size; i++){
-                Object obj = rpn.get(i);
-                if(obj == varx) stk.add(x);
-                if(obj instanceof Float f) stk.add(f);
-                if(obj instanceof Ops ops){
-                    if(ops.op1 != null) stk.add(ops.op1.get(stk.pop()));
-                    if(ops.op2 != null){
-                        float b = stk.pop();
-                        float a = stk.pop();
-                        stk.add(ops.op2.get(a, b));
-                    }
-                }
-            }
-            return stk.get(stk.size - 1);
-        }
+    void buildVars(Table t){
+        t.clear();
+        vars.removeAll(v -> !(v.name.equals("x") || v.name.equals("y") || exp.vars.contains(v.name) || strokeexp.vars.contains(v.name)));
+        final int[] c = {0};
+        vars.each(var -> {
+            if(var.name.equals("x") || var.name.equals("y")) return;
+            addDragableFloatInput.get(v -> var.value = v, () -> var.value, t.add(var.name + "=").right().get(), t.add(new TextField()).get());
+            if(Mathf.mod(++c[0], 2) == 0) t.row();
+        });
     }
 
-    public enum Ops{
-        e("e", () -> Mathf.E),
-        pi("pi", () -> Mathf.pi),
-        add("+", (a,b) -> a+b, 1),
-        sub("-", (a,b) -> a-b, 1),
-        mul("*", (a,b) -> a*b, 2),
-        div("/", (a,b) -> a/b, 2),
-        pow("^", Mathf::pow, 3),
-        log("log", Mathf::log,5),
-        ln("ln", a -> Mathf.log(a, Mathf.E),5),
-        lg("lg", a -> Mathf.log(a, 10),5),
-        abs("abs", Math::abs,5),
-        sgn("sgn", Mathf::sign,5),
-        floor("floor", Mathf::floor,5),
-        ceil("ceil", Mathf::ceil,5),
-        round("round", a -> Mathf.round(a),5),
-        mod("mod", Mathf::mod,5),
-        max("max", Math::max,5),
-        min("min", Math::min,5),
-        len("len", Mathf::len,5),
-        sin("sin", a -> Mathf.sin(a), 5),
-        cos("cos", Mathf::cos, 5),
-        tan("tan", a -> Mathf.tan(a, 1f, 1f), 5),
-        asin("arcsin", a -> (float)Math.asin(a), 5),
-        acos("arccos", a -> (float)Math.acos(a), 5),
-        atan("arctan", a -> (float)Math.atan(a), 5),
-        ;
-        public final String symbol;
-        public final float l;
-        public final Op2 op2;
-        public final Op1 op1;
-        public final Op0 op0;
-        public final int ary;
-
-        Ops(String symbol, Op0 op){
-            this.symbol = symbol;
-            l = Float.MAX_VALUE;
-            op0 = op;
-            op1 = null;
-            op2 = null;
-            ary = 0;
+    @Override
+    public Variable getVar(String vname){
+        var var = vars.find(v -> v.name.equals(vname));
+        if(var == null){
+            vars.add(var = new Variable(vname));
         }
-
-        Ops(String symbol, Op1 op, float lvl){
-            this.symbol = symbol;
-            l = lvl;
-            op0 = null;
-            op1 = op;
-            op2 = null;
-            ary = 1;
-        }
-
-        Ops(String symbol, Op2 op, float lvl){
-            this.symbol = symbol;
-            l = lvl;
-            op0 = null;
-            op1 = null;
-            op2 = op;
-            ary = 2;
-        }
-
-        public boolean match(String str){
-            return str.equals(this.symbol);
-        }
-    }
-
-    interface Op2{
-        float get(float a1, float a2);
-    }
-
-    interface Op1{
-        float get(float a);
-    }
-
-    interface Op0{
-        float get();
+        return var;
     }
 }

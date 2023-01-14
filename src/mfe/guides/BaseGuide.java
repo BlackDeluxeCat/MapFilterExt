@@ -10,10 +10,12 @@ import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.util.*;
+import mfe.*;
 import mindustry.*;
 import mindustry.gen.*;
 import mindustry.ui.*;
 
+import static mfe.MapFilterExt.addDragableFloatInput;
 import static mfe.MapFilterExt.titleTogglet;
 import static mfe.guides.GuideSeqImage.*;
 
@@ -58,7 +60,7 @@ public class BaseGuide{
             title.background(Styles.black);
             title.button(name, titleTogglet, () -> enable = !enable).growX().pad(2f).with(b -> {
                 b.update(() -> b.getLabel().setColor(color.r, color.g, color.b, color.a * (enable ? 1f : 0.5f)));
-            }).checked(enable).width(176f);
+            }).checked(enable).minWidth(200f);
 
             title.button("" + Iconc.pick, Styles.flatt, () -> Vars.ui.picker.show(color, true, c -> color.set(c)))
                     .update(b -> b.getLabel().setColor(color)).size(24f).pad(2f);
@@ -95,34 +97,10 @@ public class BaseGuide{
     /** Add offset fields */
     public void buildOffsetConfigure(Table table){
         table.background(Styles.black3);
-        TextField.TextFieldFilter filter = (field, c) -> TextField.TextFieldFilter.floatsOnly.acceptChar(field, c) || ((c == '-' && field.getCursorPosition() == 0 && !field.getText().contains("-")));
-        Cons3<Cons<Float>, Prov<Float>, String> builder = (setter, getter, name) -> {
-            Label l = table.add(name).get();
-            TextField f = table.field("0", filter, s -> setter.get(Strings.parseFloat(s))).size(120f, 18f).get();
-            l.addListener(new ElementGestureListener(){
-                @Override
-                public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
-                    super.pan(event, x, y, deltaX, deltaY);
-                    cancelScroll();
-                    setter.get((float)Mathf.floor(getter.get() + deltaX / 2f));
-                    f.setText(String.valueOf(getter.get()));
-                }
-
-                @Override
-                public void tap(InputEvent event, float x, float y, int count, KeyCode button){
-                    super.tap(event, x, y, count, button);
-                    if(count >= 2){
-                        setter.get(0f);
-                        f.setText(String.valueOf(getter.get()));
-                    }
-                }
-            });
-        };
-        builder.get(x -> off.x = x, () -> off.x, Iconc.move + "dx");
+        addDragableFloatInput.get(x -> off.x = x, () -> off.x, table.add(Iconc.move + "dx").get(), table.add(new TextField()).size(110f, 18f).get());
+        addDragableFloatInput.get(r -> rotDegree = r, () -> rotDegree, table.add(Iconc.rotate + "rot").get(), table.add(new TextField()).size(110f, 18f).get());
         table.row();
-        builder.get(y -> off.y = y, () -> off.y, Iconc.move + "dy");
-        table.row();
-        builder.get(r -> rotDegree = r, () -> rotDegree, Iconc.rotate + "rot");
+        addDragableFloatInput.get(y -> off.y = y, () -> off.y, table.add(Iconc.move + "dy").get(), table.add(new TextField()).size(110f, 18f).get());
     }
 
     public void buildContent(Table table){}
