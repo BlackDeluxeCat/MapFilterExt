@@ -34,15 +34,7 @@ public class CopyPasteFilter extends MI2UGenerateFilter{
         };
     }
 
-    /*
-    @Override
-    public void apply(Tiles tiles, GenerateInput in){
-        long[][] buffer = new long[(int)width][(int)height];
-
-    }
-     */
-
-    //TODO override apply(Tiles tiles, GenerateInput in)
+    //It doesn't support preview to override apply(Tiles tiles, GenerateInput in)
     @Override
     public void apply(GenerateInput in){
         //copy to buffers before first tile is processed

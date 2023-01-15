@@ -122,7 +122,6 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     public void consTiles(Cons<Vec2> cons, float step){
         for(float x = 0; x < getIW(); x += step){
             for(float y = 0; y < getIH(); y += step){
-
                 projt2g(ptile.set(x, y));
                 if(polar){
                     varx.value = Mathf.mod(Tmp.v1.set(ptile).angleRad() + 2*Mathf.pi, 2*Mathf.pi);
