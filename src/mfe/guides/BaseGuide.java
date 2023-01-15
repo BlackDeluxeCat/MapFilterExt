@@ -1,22 +1,17 @@
 package mfe.guides;
 
-import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
-import arc.input.*;
 import arc.math.*;
 import arc.math.geom.*;
-import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.util.*;
-import mfe.*;
 import mindustry.*;
 import mindustry.gen.*;
 import mindustry.ui.*;
 
-import static mfe.MapFilterExt.addDragableFloatInput;
-import static mfe.MapFilterExt.titleTogglet;
+import static mfe.MapFilterExt.*;
 import static mfe.guides.GuideSeqImage.*;
 
 public class BaseGuide{
@@ -45,8 +40,13 @@ public class BaseGuide{
     public void drawAxis(){
         Draw.color(Color.black, 0.8f);
         Lines.stroke(8f);
-        Lines.line(iposx(), iposy() + yt2i(off.y), iposx() + getW(), iposy() + yt2i(off.y));
-        Lines.line(iposx() + yt2i(off.x), iposy(), iposx() + yt2i(off.x), iposy() + getH());
+        Vec2 xpos = Tmp.v1.set(1.5f * getW(), 0f).rotate(rotDegree);//xpos
+        Vec2 xneg = Tmp.v2.set(Tmp.v1).rotate90(0).rotate90(0);//xneg
+        Vec2 o = Tmp.v3.set(iposx() + xt2i(off.x + 0.5f), iposy() + yt2i(off.y + 0.5f));//origin
+        Lines.line(o.x + xneg.x, o.y + xneg.y, o.x + xpos.x, o.y + xpos.y);//xaxis
+        xpos.rotate90(0);
+        xneg.rotate90(0);
+        Lines.line(o.x + xneg.x, o.y + xneg.y, o.x + xpos.x, o.y + xpos.y);//yaxis
     }
 
     public void buildConfigure(Table table){
@@ -80,6 +80,7 @@ public class BaseGuide{
             }).size(24f).pad(2f);
 
             title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + name + " ?", () -> {
+                onRemove();
                 guides.remove(this);
                 rebuild();
             })).size(24f).pad(2f).get().getLabel().setColor(Color.scarlet);
@@ -95,15 +96,27 @@ public class BaseGuide{
     }
 
     /** Add offset fields */
-    public void buildOffsetConfigure(Table table){
+    public void buildOffsetConfigure(Table table, Runnable changed){
         table.background(Styles.black3);
-        addDragableFloatInput.get(x -> off.x = x, () -> off.x, table.add(Iconc.move + "dx").get(), table.add(new TextField()).size(110f, 18f).get());
-        addDragableFloatInput.get(r -> rotDegree = r, () -> rotDegree, table.add(Iconc.rotate + "rot").get(), table.add(new TextField()).size(110f, 18f).get());
+        addDragableFloatInput.get(x -> {off.x = x; if(changed != null) changed.run();}, () -> off.x, table.add(Iconc.move + "dx").get(), table.add(new TextField()).size(110f, 18f).get());
+        addDragableFloatInput.get(r -> {rotDegree = r; if(changed != null) changed.run();}, () -> rotDegree, table.add(Iconc.rotate + "rot").get(), table.add(new TextField()).size(110f, 18f).get());
         table.row();
-        addDragableFloatInput.get(y -> off.y = y, () -> off.y, table.add(Iconc.move + "dy").get(), table.add(new TextField()).size(110f, 18f).get());
+        addDragableFloatInput.get(y -> {off.y = y; if(changed != null) changed.run();}, () -> off.y, table.add(Iconc.move + "dy").get(), table.add(new TextField()).size(110f, 18f).get());
     }
 
     public void buildContent(Table table){}
+
+    public void onRemove(){}
+
+    /**project coordinates from imageTiles to graph*/
+    public Vec2 projt2g(Vec2 p){
+        return p.sub(off).rotate(-rotDegree);
+    }
+
+    /**project coordinates from graph to imageTiles*/
+    public Vec2 projg2t(Vec2 p){
+        return p.rotate(rotDegree).add(off);
+    }
 
     /** @return x scaled from ui to tile*/
     public static float xi2t(float x){

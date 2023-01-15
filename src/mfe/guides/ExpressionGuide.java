@@ -18,8 +18,15 @@ import static mindustry.Vars.*;
 
 public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     public Expression exp = new Expression(), strokeexp = new Expression();
-    public boolean staticStep = true, centerStroke = true, polar = false;
-    protected static final IntSet tiles = new IntSet(512);
+
+    protected boolean graphChanged = true;
+    protected float drawStep = 0.5f;
+    protected Interval timer = new Interval();
+    protected Pixmap image;
+    protected Texture texture;
+    protected TextureRegion region;
+
+    public boolean detailStep = true, centerStroke = true, polar = false;
     protected static final IntSeq tilesSort = new IntSeq();
     /**Handle vars.*/
     protected final Seq<Variable> vars = new Seq<>();
@@ -34,25 +41,29 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         strokeexp.parse("4", this);
 
         varsTable = new Table();
-        buildVars(varsTable);
+        onExpressionUpdate(varsTable);
 
         buttons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis);
         buttons.button(polar ? uiCoordsysPolar : uiCoordsysRect, Styles.flati, 24f, () -> {}).with(b -> {
             b.clicked(() -> {
                 polar = !polar;
                 b.getStyle().imageUp = (polar ? uiCoordsysPolar : uiCoordsysRect);
+                graphChanged = true;
             });
         });
-        buttons.button(staticStep ? uiStepStatic : uiStepDynamic, Styles.flati, 24f, () -> {}).with(b -> {
+        buttons.button(detailStep ? uiStep025 : uiStep05, Styles.flati, 24f, () -> {}).with(b -> {
             b.clicked(() -> {
-                staticStep = !staticStep;
-                b.getStyle().imageUp = (staticStep ? uiStepStatic : uiStepDynamic);
+                detailStep = !detailStep;
+                drawStep = detailStep ? 0.25f : 0.5f;
+                b.getStyle().imageUp = (detailStep ? uiStep025 : uiStep05);
+                graphChanged = true;
             });
         });
         buttons.button(centerStroke ? uiStrokeCenter : uiStrokeAdd, Styles.flati, 24f, () -> {}).with(b -> {
             b.clicked(() -> {
                 centerStroke = !centerStroke;
                 b.getStyle().imageUp = (centerStroke ? uiStrokeCenter : uiStrokeAdd);
+                graphChanged = true;
             });
         });
         buttons.button("" + Iconc.fill, Styles.flatt, () -> ui.showConfirm("Fill with " + editor.drawBlock.localizedName + " ?", this::fill));
@@ -63,10 +74,15 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         if(polar){
             Draw.color(Color.black, 0.8f);
             Lines.stroke(8f);
-            Lines.line(iposx(), iposy() + yt2i(off.y), iposx() + getW(), iposy() + yt2i(off.y));
-            Lines.line(iposx() + xt2i(off.x), iposy() + yt2i(off.y - 5f), iposx() + xt2i(off.x), iposy() + yt2i(off.y + 5f));
+            Vec2 xpos = Tmp.v1.set(1.5f * getW(), 0f).rotate(rotDegree);//xpos
+            Vec2 xneg = Tmp.v2.set(Tmp.v1).rotate90(0).rotate90(0);//xneg
+            Vec2 o = Tmp.v3.set(iposx() + xt2i(off.x + 0.5f), iposy() + yt2i(off.y + 0.5f));//origin
+            Lines.line(o.x + xneg.x, o.y + xneg.y, o.x + xpos.x, o.y + xpos.y);//xaxis
+            xpos.rotate90(0).limit(yt2i(10f));
+            xneg.rotate90(0).limit(yt2i(10f));
+            Lines.line(o.x + xneg.x, o.y + xneg.y, o.x + xpos.x, o.y + xpos.y);//yaxis
             for(int i = 1; i < getIH() / 50f; i++){
-                Lines.circle(iposx() + xt2i(off.x), iposy() + yt2i(off.y), xt2i(i * 50f));
+                Lines.circle(o.x, o.y, xt2i(i * 50f));
             }
         }else{
             super.drawAxis();
@@ -76,37 +92,22 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     @Override
     public void draw(){
         if(axis) drawAxis();
-        if(!exp.vaild) return;
+        if(!exp.vaild || !strokeexp.vaild) return;
+
+        updGraph();//if graph get modified, set graphChanged = true;
+
         Draw.color(color);
-        //Be careful! ix(), iy() is the offset of overlay element, add to final coords!
-        cons((p1, p2, step) -> {
-            if((tileRect.contains(p1.x, p1.y) || tileRect.contains(p2.x, p2.y))){
-                Lines.stroke(xt2i(step));
-                Lines.line(iposx() + xt2i(p1.x), iposy() + yt2i(p1.y), iposx() + xt2i(p2.x), iposy() + yt2i(p2.y));
-            }
-        });
+        Draw.rect(region, iposx() + getW() / 2f + xt2i(0.5f - drawStep/2f), iposy() + getH() / 2f + yt2i(0.5f - drawStep/2f), getW(), getH());
     }
 
     public void fill(){
         float brush = editor.brushSize;
         editor.brushSize = 1f;
-        tiles.clear();
         tilesSort.clear();
 
-        cons((p1, p2, step) -> {
-            Vec2 dv = Tmp.v3.set(p2).sub(p1).nor().scl(0.1f);
-            if(dv.isZero(0.001f)) return;
-            for(; Tmp.v4.set(p2).sub(p1).dot(dv) >= 0f; p1.add(dv)){
-                //Log.info(p1.toString() + "|||" + p2.toString());
-                if(p1.x <= getIW() + 1f && p1.x >= 0 && p1.y <= getIH() + 1f && p1.y >= 0){
-                    if(Mathf.mod(p1.x, 1f) > 0.25f && Mathf.mod(p1.x, 1f) < 0.75f && Mathf.mod(p1.y, 1f) > 0.25f && Mathf.mod(p1.y, 1f) < 0.75f) tiles.add(Point2.pack(Mathf.floor(p1.x), Mathf.floor(p1.y)));
-                }
-            }
-        });
+        consTiles(p -> tilesSort.add(Point2.pack((int)p.x, (int)p.y)), 1f);
 
         //rotated coordinates says it needs sorting!
-        tiles.each(tilesSort::add);
-        tilesSort.sort();
         tilesSort.each(pos -> {
             editor.drawBlocks(Point2.x(pos), Point2.y(pos), false, editor.drawBlock.isOverlay(), t -> true);
         });
@@ -115,54 +116,50 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         editor.flushOp();
     }
 
-    //for editor users, tile axis are more common.
-    public void cons(Cons3<Vec2, Vec2, Float> c3){
-        var point = Tmp.v1;
-        var point2 = Tmp.v2;
-        float x = 0f;
-        float step = 0.1f;
-        varx.value = x;
-        float fy = exp.get(), prey;
-        while(x < getIW()){
-            step = Mathf.clamp(step, 0.02f, 0.5f);
+    protected Vec2 pcur = new Vec2(), pstk = new Vec2(), ptile = new Vec2(), pcps = new Vec2();
+    protected Rect line = new Rect();
+    /**Project tile view to graph and check whether each point is close to curve and should invoke the consumer or not.*/
+    public void consTiles(Cons<Vec2> cons, float step){
+        for(float x = 0; x < getIW(); x += step){
+            for(float y = 0; y < getIH(); y += step){
 
-            //polar won't apply offset to x in function, and x is scaled to [0, 2pi]
-            float inputx = polar ? (2 * Mathf.pi * x / getIW()):x-off.x;
-            varx.value = inputx;
-            float sy = (strokeexp.vaild ? strokeexp.get() : 1f);
+                projt2g(ptile.set(x, y));
+                if(polar){
+                    varx.value = Mathf.mod(Tmp.v1.set(ptile).angleRad() + 2*Mathf.pi, 2*Mathf.pi);
+                    pcur.set(exp.get(), 0f).rotateRad(varx.value);
+                    pstk.set(strokeexp.get(), 0f).rotateRad(varx.value);
 
-            if(polar){
-                point.set(1f, 0f).scl(fy - (centerStroke ? sy/2f : 0f)).rotateRad(inputx).rotate(rotDegree).add(off);
-                point2.set(1f, 0f).scl(fy + (centerStroke ? sy/2f : sy)).rotateRad(inputx).rotate(rotDegree).add(off);
-            }else{
-                point.set(x, fy - (centerStroke ? sy/2f : 0f)).sub(off).rotate(rotDegree).add(off);
-                point2.set(x, fy + (centerStroke ? sy/2f : sy)).sub(off).rotate(rotDegree).add(off);
+                    if(centerStroke) pcur.mulAdd(pstk, -1f / 2f);
+                    pstk.add(pcur);
+                }else{
+                    varx.value = ptile.x;
+                    pcur.set(ptile.x, exp.get());
+                    pstk.set(ptile.x, strokeexp.get());
+
+                    if(centerStroke) pcur.sub(0f, pstk.y / 2f);
+                    pstk.y += pcur.y;
+                }
+
+                float agl = pcps.set(pstk).sub(pcur).angle();
+                pcps.rotate(-(agl - 90));
+                Tmp.v1.set(ptile).sub(pcur).rotate(-(agl - 90));
+                if(line.set(-step/2f, -step/2f, step, pcps.len() + step).contains(Tmp.v1)){
+                    cons.get(ptile.set(x, y));
+                }
             }
-            c3.get(point, point2, step);
-
-            x += step;
-            prey = exp.get() + (polar?0f:off.y);
-            if(staticStep){
-                step = 0.1f;
-            }else if(Math.abs(prey - fy) > 0.5f){
-                step /= 2f;
-            }else if(Math.abs(prey - fy) < 0.1f){
-                step *= 2f;
-            }
-            fy = prey;
         }
     }
 
     @Override
     public void buildContent(Table table){
-        table.table(this::buildOffsetConfigure);
+        table.table(t -> buildOffsetConfigure(t, () -> graphChanged = true));
 
         table.row();
 
         table.table(tline -> {
             tline.add("f(x)=");
             tline.field(exp.text, s -> {
-                if(exp.parse(s, this)) buildVars(varsTable);
+                if(exp.parse(s, this)) onExpressionUpdate(varsTable);
             }).update(f -> {
                 f.color.set(exp.vaild ? Color.white : Color.scarlet);
             }).growX();
@@ -176,7 +173,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         table.table(tfill -> {
             tfill.add("s(x)=");
             tfill.field(strokeexp.text, s -> {
-                if(strokeexp.parse(s, this)) buildVars(varsTable);
+                if(strokeexp.parse(s, this)) onExpressionUpdate(varsTable);
             }).update(f -> {
                 f.color.set(strokeexp.vaild ? Color.white : Color.scarlet);
             }).growX();
@@ -190,15 +187,45 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         table.add(varsTable).fill();
     }
 
-    void buildVars(Table t){
+    public void onExpressionUpdate(Table t){
+        graphChanged = true;
+
         t.clear();
         vars.removeAll(v -> !(v.name.equals("x") || v.name.equals("y") || exp.vars.contains(v.name) || strokeexp.vars.contains(v.name)));
         final int[] c = {0};
         vars.each(var -> {
             if(var.name.equals("x") || var.name.equals("y")) return;
-            addDragableFloatInput.get(v -> var.value = v, () -> var.value, t.add(var.name + "=").right().get(), t.add(new TextField()).get());
+            addDragableFloatInput.get(v -> {
+                var.value = v;
+                graphChanged = true;
+                }, () -> var.value, t.add(var.name + "=").right().get(), t.add(new TextField()).get());
             if(Mathf.mod(++c[0], 2) == 0) t.row();
         });
+    }
+
+    public void updGraph(){
+        float step = drawStep;
+        if(!graphChanged) return;
+        if(!timer.get(10f)) return;
+        graphChanged = false;
+
+        if(image == null) image = new Pixmap((int)(getIW() / step), (int)(getIH() / step));
+        if(image.width != (int)(getIW() / step) || image.height != (int)(getIH() / step)){
+            image.dispose();
+            image = new Pixmap((int)(getIW() / step), (int)(getIH() / step));
+        }
+        image.fill(Color.clear);
+        consTiles(p -> image.set((int)(p.x / step), image.height - (int)(p.y / step) - 1, Color.whiteRgba), step);
+
+        if(texture != null) texture.dispose();
+        texture = new Texture(image);
+        region = new TextureRegion(texture);
+    }
+
+    @Override
+    public void onRemove(){
+        if(image != null) image.dispose();
+        if(texture != null) texture.dispose();
     }
 
     @Override
