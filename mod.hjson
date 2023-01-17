@@ -8,7 +8,7 @@ main: "mfe.MapFilterExt"
 description: "Added some useful filters.
 Copypaste, modified noise, grid. They works with a coords-transform kit."
 
-version: 1.2
-minGameVersion: 136
+version: 1.2.1
+minGameVersion: 141.1
 java: true
 hidden: true
