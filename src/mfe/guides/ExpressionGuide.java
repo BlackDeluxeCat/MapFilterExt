@@ -127,6 +127,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
                     varx.value = Mathf.mod(Tmp.v1.set(ptile).angleRad() + 2*Mathf.pi, 2*Mathf.pi);
                     pcur.set(exp.get(), 0f).rotateRad(varx.value);
                     pstk.set(strokeexp.get(), 0f).rotateRad(varx.value);
+                    if(Mathf.zero(pstk.x)) continue;//zero stroke should be skipped
 
                     if(centerStroke) pcur.mulAdd(pstk, -1f / 2f);
                     pstk.add(pcur);
@@ -134,6 +135,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
                     varx.value = ptile.x;
                     pcur.set(ptile.x, exp.get());
                     pstk.set(ptile.x, strokeexp.get());
+                    if(Mathf.zero(pstk.y)) continue;//zero stroke should be skipped
 
                     if(centerStroke) pcur.sub(0f, pstk.y / 2f);
                     pstk.y += pcur.y;
