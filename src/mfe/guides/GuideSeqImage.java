@@ -8,9 +8,12 @@ import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
 import mfe.*;
+import mindustry.gen.*;
+import mindustry.io.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 
+import static mfe.MapFilterExt.buttonSize;
 import static mindustry.Vars.ui;
 
 /**
@@ -23,7 +26,7 @@ public class GuideSeqImage extends GridImage{
     protected static ScrollPane paneList;
     protected static Table main = new Table();
     protected static boolean minimize = false;
-    public int imageWidth, imageHeight;
+    public transient int imageWidth, imageHeight;
 
     public GuideSeqImage(int w, int h){
         super(w, h);
@@ -61,12 +64,46 @@ public class GuideSeqImage extends GridImage{
             tit.button("MFE-Guides", MapFilterExt.titleTogglet, () -> {
                 minimize = !minimize;
                 rebuild();
-            }).grow().checked(minimize);
-            tit.label(() -> "Mem:" + (int)(Core.app.getJavaHeap() / 1024 / 1024)).color(Tmp.c1.set(Color.green).a(0.5f)).style(Styles.outlineLabel).name("memory").width(0.5f).with(l -> {
+            }).with(b -> b.getLabel().setWrap(false)).checked(minimize).growX();
+            tit.label(() -> "Mem:" + (int)(Core.app.getJavaHeap() / 1024 / 1024)).color(Tmp.c1.set(Color.green).a(0.7f)).style(Styles.outlineLabel).name("memory").width(0.5f).with(l -> {
                 l.setAlignment(Align.bottomRight);
-                l.setFontScale(0.75f);
+                l.setFontScale(0.7f);
             }).fillY();
-            tit.button("+", Styles.flatBordert, GuideSeqImage::showSelect).size(28f);
+
+            tit.button("" + Iconc.add, Styles.flatBordert, GuideSeqImage::showSelect).size(buttonSize);
+
+            tit.button("" + Iconc.copy, Styles.flatBordert, () -> Core.app.setClipboardText(JsonIO.write(guides))).size(buttonSize);
+
+            tit.button("" + Iconc.paste, Styles.flatBordert, () -> {
+                try{
+                    clearGuides();
+                    guides.set(JsonIO.read(Seq.class, Core.app.getClipboardText()));
+                    rebuild();
+                }catch(Throwable e){
+                    ui.showException(e);
+                    Log.err(e);
+                }
+            }).size(buttonSize);
+
+            tit.button("" + Iconc.paste, Styles.flatBordert, () -> {
+                try{
+                    guides.add(JsonIO.read(Seq.class, Core.app.getClipboardText()));
+                    rebuild();
+                }catch(Throwable e){
+                    ui.showException(e);
+                    Log.err(e);
+                }
+            }).size(buttonSize).with(tb -> {
+                tb.add("+").color(Color.green).style(Styles.outlineLabel).name("memory").width(0.1f).with(l -> {
+                    l.setAlignment(Align.bottomRight);
+                    l.setFontScale(0.75f);
+                }).fillY();
+            });
+
+            tit.button("" + Iconc.cancel, Styles.flatBordert, () -> ui.showConfirm("Confirm Delete All Guides?", () -> {
+                clearGuides();
+                rebuild();
+            })).size(buttonSize).with(tb -> tb.getLabel().setColor(Color.scarlet));
         }).fillX().minWidth(200f);
 
         if(minimize) return;
@@ -100,14 +137,20 @@ public class GuideSeqImage extends GridImage{
             t.background(Styles.grayPanel);
             t.defaults().width(500f).minHeight(100f).top();
             //selectDialog.cont.button("@guide.base", Styles.flatBordert, () -> addNewGuide(BaseGuide::new));
-            t.button("@guide.vanilla", Styles.flatBordert, () -> addNewGuide(VanillaGrid::new));
+            t.button("@guide.vanilla", Styles.flatBordert, () -> addNewGuide(VanillaGridGuide::new));
             t.button("@guide.expression", Styles.flatBordert, () -> addNewGuide(ExpressionGuide::new));
+            t.button("@guide.curve", Styles.flatBordert, () -> addNewGuide(CurveGuide::new));
 
             t.row();
 
             t.labelWrap("@guide.vanilla.info").fill();
             t.labelWrap("@guide.expression.info").fill();
         }).growY();
+    }
+
+    private static void clearGuides(){
+        guides.each(BaseGuide::onRemove);
+        guides.clear();
     }
 
     private static void addNewGuide(Prov<BaseGuide> getter){

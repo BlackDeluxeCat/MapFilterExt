@@ -16,42 +16,40 @@ import mindustry.ui.*;
 import static mfe.MapFilterExt.*;
 import static mindustry.Vars.*;
 
+/** exp2 works as stroke function */
 public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
-    public Expression exp = new Expression(), strokeexp = new Expression();
+    public Expression exp = new Expression(), exp2 = new Expression();
 
-    protected boolean graphChanged = true;
-    protected float drawStep = 0.5f;
-    protected Interval timer = new Interval();
-    protected Pixmap image;
-    protected Texture texture;
-    protected TextureRegion region;
+    protected transient boolean graphChanged = true;
+    protected transient float drawStep = 0.5f;
+    protected transient Interval timer = new Interval();
+    protected transient Pixmap image;
+    protected transient Texture texture;
+    protected transient TextureRegion region;
 
     public boolean detailStep = true, centerStroke = true, polar = false;
     protected static final IntSeq tilesSort = new IntSeq();
     /**Handle vars.*/
-    protected final Seq<Variable> vars = new Seq<>();
-    protected Variable varx, vary;
-    protected Table varsTable;
+    protected Seq<Variable> vars = new Seq<>();
+    protected transient Variable varx, vary;
+    protected transient Table varsTable;
 
     public ExpressionGuide(){
-        vars.add(varx = new Variable("x"));
-        vars.add(vary = new Variable("y"));
+        varx = new Variable("x");
+        vary = new Variable("y");
         name = "@guide.expression";
-        exp.parse("x", this);
-        strokeexp.parse("4", this);
 
         varsTable = new Table();
-        onExpressionUpdate(varsTable);
 
         buttons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis);
-        buttons.button(polar ? uiCoordsysPolar : uiCoordsysRect, Styles.flati, 24f, () -> {}).with(b -> {
+        buttons.button(polar ? uiCoordsysPolar : uiCoordsysRect, Styles.flati, buttonSize, () -> {}).with(b -> {
             b.clicked(() -> {
                 polar = !polar;
                 b.getStyle().imageUp = (polar ? uiCoordsysPolar : uiCoordsysRect);
                 graphChanged = true;
             });
         });
-        buttons.button(detailStep ? uiStep025 : uiStep05, Styles.flati, 24f, () -> {}).with(b -> {
+        buttons.button(detailStep ? uiStep025 : uiStep05, Styles.flati, buttonSize, () -> {}).with(b -> {
             b.clicked(() -> {
                 detailStep = !detailStep;
                 drawStep = detailStep ? 0.25f : 0.5f;
@@ -59,7 +57,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
                 graphChanged = true;
             });
         });
-        buttons.button(centerStroke ? uiStrokeCenter : uiStrokeAdd, Styles.flati, 24f, () -> {}).with(b -> {
+        buttons.button(centerStroke ? uiStrokeCenter : uiStrokeAdd, Styles.flati, buttonSize, () -> {}).with(b -> {
             b.clicked(() -> {
                 centerStroke = !centerStroke;
                 b.getStyle().imageUp = (centerStroke ? uiStrokeCenter : uiStrokeAdd);
@@ -92,7 +90,6 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     @Override
     public void draw(){
         if(axis) drawAxis();
-        if(!exp.vaild || !strokeexp.vaild) return;
 
         updGraph();//if graph get modified, set graphChanged = true;
 
@@ -116,25 +113,31 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         editor.flushOp();
     }
 
-    protected Vec2 pcur = new Vec2(), pstk = new Vec2(), ptile = new Vec2(), pcps = new Vec2();
-    protected Rect line = new Rect();
+    protected transient Vec2 pcur = new Vec2(), pstk = new Vec2(), ptile = new Vec2(), pcps = new Vec2();
+    protected transient Rect line = new Rect();
     /**Project tile view to graph and check whether each point is close to curve and should invoke the consumer or not.*/
     public void consTiles(Cons<Vec2> cons, float step){
+        //re-parse for imported data init.
+        if(!exp.vaild) exp.parse(exp.expression, this);
+        if(!exp2.vaild) exp2.parse(exp2.expression, this);
+        if(!exp.vaild || !exp2.vaild) return;
+
         for(float x = 0; x < getIW(); x += step){
             for(float y = 0; y < getIH(); y += step){
                 projt2g(ptile.set(x, y));
                 if(polar){
-                    varx.value = Mathf.mod(Tmp.v1.set(ptile).angleRad() + 2*Mathf.pi, 2*Mathf.pi);
-                    pcur.set(exp.get(), 0f).rotateRad(varx.value);
-                    pstk.set(strokeexp.get(), 0f).rotateRad(varx.value);
+                    varx.v = Mathf.mod(Tmp.v1.set(ptile).angleRad() + 2*Mathf.pi, 2*Mathf.pi);
+                    pcur.set(exp.get(), 0f).rotateRad(varx.v);
+                    pstk.set(exp2.get(), 0f);
                     if(Mathf.zero(pstk.x)) continue;//zero stroke should be skipped
+                    pstk.rotateRad(varx.v);
 
                     if(centerStroke) pcur.mulAdd(pstk, -1f / 2f);
                     pstk.add(pcur);
                 }else{
-                    varx.value = ptile.x;
+                    varx.v = ptile.x;
                     pcur.set(ptile.x, exp.get());
-                    pstk.set(ptile.x, strokeexp.get());
+                    pstk.set(ptile.x, exp2.get());
                     if(Mathf.zero(pstk.y)) continue;//zero stroke should be skipped
 
                     if(centerStroke) pcur.sub(0f, pstk.y / 2f);
@@ -159,32 +162,35 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
         table.table(tline -> {
             tline.add("f(x)=");
-            tline.field(exp.text, s -> {
+            if(exp.expression.length() == 0) exp.parse("x", this);
+            tline.field(exp.expression, s -> {
                 if(exp.parse(s, this)) onExpressionUpdate(varsTable);
             }).update(f -> {
                 f.color.set(exp.vaild ? Color.white : Color.scarlet);
             }).growX();
             tline.row();
             tline.add();
-            tline.label(() -> exp.text).height(0.1f).color(Color.clear).padLeft(50f);
+            tline.label(() -> exp.expression).height(0.1f).color(Color.clear).padLeft(50f);
         }).left();
 
         table.row();
 
         table.table(tfill -> {
             tfill.add("s(x)=");
-            tfill.field(strokeexp.text, s -> {
-                if(strokeexp.parse(s, this)) onExpressionUpdate(varsTable);
+            if(exp2.expression.length() == 0) exp2.parse("4", this);
+            tfill.field(exp2.expression, s -> {
+                if(exp2.parse(s, this)) onExpressionUpdate(varsTable);
             }).update(f -> {
-                f.color.set(strokeexp.vaild ? Color.white : Color.scarlet);
+                f.color.set(exp2.vaild ? Color.white : Color.scarlet);
             }).growX();
             tfill.row();
             tfill.add();
-            tfill.label(() -> strokeexp.text).height(0.1f).color(Color.clear).padLeft(50f);
+            tfill.label(() -> exp2.expression).height(0.1f).color(Color.clear).padLeft(50f);
         }).left();
 
         table.row();
 
+        onExpressionUpdate(varsTable);
         table.add(varsTable).fill();
     }
 
@@ -192,14 +198,13 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         graphChanged = true;
 
         t.clear();
-        vars.removeAll(v -> !(v.name.equals("x") || v.name.equals("y") || exp.vars.contains(v.name) || strokeexp.vars.contains(v.name)));
+        vars.removeAll(v -> exp.vaild && exp2.vaild && !(exp.vars.contains(v.n) || exp2.vars.contains(v.n)));
         final int[] c = {0};
         vars.each(var -> {
-            if(var.name.equals("x") || var.name.equals("y")) return;
             addDragableFloatInput.get(v -> {
-                var.value = v;
+                var.v = v;
                 graphChanged = true;
-                }, () -> var.value, t.add(var.name + "=").right().get(), t.add(new TextField()).get());
+                }, () -> var.v, t.add(var.n + "=").right().get(), t.add(new TextField()).get());
             if(Mathf.mod(++c[0], 2) == 0) t.row();
         });
     }
@@ -231,7 +236,10 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
     @Override
     public Variable getVar(String vname){
-        var var = vars.find(v -> v.name.equals(vname));
+        if(vname.equals("x")) return varx;
+        if(vname.equals("y")) return vary;
+
+        var var = vars.find(v -> v.n.equals(vname));
         if(var == null){
             vars.add(var = new Variable(vname));
         }

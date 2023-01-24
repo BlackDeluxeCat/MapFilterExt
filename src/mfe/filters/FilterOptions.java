@@ -17,6 +17,7 @@ import mindustry.world.*;
 import mindustry.world.blocks.environment.*;
 
 import static mindustry.Vars.*;
+import static mfe.MapFilterExt.*;
 
 public class FilterOptions{
     public static final Boolf<Block> oresOptional = b -> b == Blocks.air || (b instanceof OverlayFloor && !headless && Core.atlas.isFound(b.fullIcon));
@@ -181,7 +182,7 @@ public class FilterOptions{
              table.button("" + Iconc.pencil, Styles.flatt, () -> {
                  textMode = !textMode;
                  build(table);
-             }).checked(textMode).size(24f);
+             }).checked(textMode).size(buttonSize);
          }
      }
 }

@@ -1,6 +1,5 @@
 package mfe.math;
 
-import arc.func.*;
 import arc.math.*;
 import arc.struct.*;
 import arc.util.*;
@@ -10,25 +9,23 @@ import java.util.regex.*;
 public class Expression{
     /**signs of variables, used for checking.
      * variable instances get from {@link ExpressionHandler}*/
-    public Seq<String> vars = new Seq<>();
+    public transient Seq<String> vars = new Seq<>();
     /**RPN in stack.*/
-    protected Seq<Object> rpn = new Seq<>();
+    protected transient Seq<Object> rpn = new Seq<>();
     //split before/behind any number, x, (, )
     protected static Pattern splitPattern = Pattern.compile("[, ]|(?=[x()])|(?<=[x()])");  //just use space.
     protected static Matcher varMatcher = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]*$").matcher("");
     /**Stack everything including op, constants, user variable instances.*/
-    protected FloatSeq stk = new FloatSeq();
-    public boolean vaild = false;
-    public String text;
+    protected transient FloatSeq stk = new FloatSeq();
+    public transient boolean vaild = false;
+    public String expression = "";
 
     public Expression(){
     }
 
-    /**
-     * parse a string to RPN.
-     */
+    /**parse a string to RPN.*/
     public boolean parse(String str, ExpressionHandler handler){
-        this.text = str;
+        this.expression = str;
         rpn.clear();
         vars.clear();
         int arys = 0, consumes = 0, braceL = 0, braceR = 0;
@@ -102,7 +99,7 @@ public class Expression{
         stk.clear();
         for(int i = 0; i < rpn.size; i++){
             Object obj = rpn.get(i);
-            if(obj instanceof Variable svar) stk.add(svar.value);//user vars
+            if(obj instanceof Variable svar) stk.add(svar.v);//user vars
             if(obj instanceof Float f) stk.add(f);//constants
             if(obj instanceof Ops ops){//operations
                 if(ops.op1 != null) stk.add(ops.op1.get(stk.pop()));

@@ -10,6 +10,7 @@ import arc.scene.ui.*;
 import arc.util.*;
 import mfe.filters.*;
 import mfe.guides.*;
+import mfe.math.*;
 import mindustry.game.EventType.*;
 import mindustry.io.*;
 import mindustry.maps.*;
@@ -23,11 +24,13 @@ import static mfe.guides.GuideSeqImage.*;
 import static mindustry.Vars.ui;
 
 public class MapFilterExt extends Mod{
+    public static float buttonSize = 32f;
 
     public MapFilterExt(){
         Events.on(ClientLoadEvent.class, e -> {
             initStyles();
             addFilters();
+            initGuideClassJsonIO();
             ui.editor.shown(GuideSeqImage::rebuild);
             buildSelect();
         });
@@ -52,6 +55,14 @@ public class MapFilterExt extends Mod{
         Log.info("Adding New Filters... Filters Size: " + newArr.length);
         GenerateFilter ins = filter.get();
         JsonIO.json.addClassTag(Strings.camelize(ins.getClass().getSimpleName().replace("Filter", "")), ins.getClass());
+    }
+
+    public static void initGuideClassJsonIO(){
+        JsonIO.json.addClassTag(BaseGuide.class.getSimpleName(), BaseGuide.class);
+        JsonIO.json.addClassTag(ExpressionGuide.class.getSimpleName(), ExpressionGuide.class);
+        JsonIO.json.addClassTag(VanillaGridGuide.class.getSimpleName(), VanillaGridGuide.class);
+        JsonIO.json.addClassTag(CurveGuide.class.getSimpleName(), CurveGuide.class);
+        JsonIO.json.addClassTag(Variable.class.getSimpleName(), Variable.class);
     }
 
     public static TextButton.TextButtonStyle titleTogglet;

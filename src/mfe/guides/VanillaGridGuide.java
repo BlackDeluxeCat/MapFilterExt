@@ -3,8 +3,8 @@ package mfe.guides;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 
-public class VanillaGrid extends BaseGuide{
-    public VanillaGrid(){
+public class VanillaGridGuide extends BaseGuide{
+    public VanillaGridGuide(){
         name = "@guide.vanilla";
         color.set(Color.gray);
     }

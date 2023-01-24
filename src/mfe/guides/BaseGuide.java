@@ -1,5 +1,6 @@
 package mfe.guides;
 
+import arc.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.math.*;
@@ -15,18 +16,18 @@ import static mfe.MapFilterExt.*;
 import static mfe.guides.GuideSeqImage.*;
 
 public class BaseGuide{
-    public String name;
+    public transient String name;
     public Color color = new Color(Color.salmon).a(0.5f);
     public Vec2 off = new Vec2();
     public float rotDegree = 0f;
     public boolean enable = true, axis = false;
-    public Table buttons = new Table();
+    public transient Table buttons = new Table();
     public static final Rect drawRect = new Rect(), tileRect = new Rect();
 
     public BaseGuide(){
         name = "BaseDebug";
         buttons.background(Styles.black3);
-        buttons.defaults().size(24f).pad(2f);
+        buttons.defaults().size(buttonSize).pad(2f);
     }
 
     public void draw(){
@@ -58,32 +59,32 @@ public class BaseGuide{
 
         table.table(title -> {
             title.background(Styles.black);
-            title.button(name, titleTogglet, () -> enable = !enable).growX().pad(2f).with(b -> {
+            title.button(name, titleTogglet, () -> enable = !enable).grow().pad(2f).with(b -> {
                 b.update(() -> b.getLabel().setColor(color.r, color.g, color.b, color.a * (enable ? 1f : 0.5f)));
             }).checked(enable).minWidth(200f);
 
             title.button("" + Iconc.pick, Styles.flatt, () -> Vars.ui.picker.show(color, true, c -> color.set(c)))
-                    .update(b -> b.getLabel().setColor(color)).size(24f).pad(2f);
+                    .update(b -> b.getLabel().setColor(color)).size(buttonSize).pad(2f);
 
             title.button("" + Iconc.up, Styles.flatt, () -> {
                 int self = guides.indexOf(this);
                 int tgt = Mathf.clamp(self - 1, 0, guides.size - 1);
                 guides.swap(self, tgt);
                 rebuild();
-            }).size(24f).pad(2f);
+            }).size(buttonSize).pad(2f);
 
             title.button("" + Iconc.down, Styles.flatt, () -> {
                 int self = guides.indexOf(this);
                 int tgt = Mathf.clamp(self + 1, 0, guides.size - 1);
                 guides.swap(self, tgt);
                 rebuild();
-            }).size(24f).pad(2f);
+            }).size(buttonSize).pad(2f);
 
-            title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + name + " ?", () -> {
+            title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + Core.bundle.get(name) + " ?", () -> {
                 onRemove();
                 guides.remove(this);
                 rebuild();
-            })).size(24f).pad(2f).get().getLabel().setColor(Color.scarlet);
+            })).size(buttonSize).pad(2f).get().getLabel().setColor(Color.scarlet);
         }).growX();
 
         table.row();
