@@ -80,7 +80,7 @@ public class BaseGuide{
                 rebuild();
             }).size(buttonSize).pad(2f);
 
-            title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + Core.bundle.get(name) + " ?", () -> {
+            title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + Core.bundle.get(name.substring(1)) + " ?", () -> {
                 onRemove();
                 guides.remove(this);
                 rebuild();

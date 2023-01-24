@@ -13,7 +13,7 @@ import mindustry.io.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 
-import static mfe.MapFilterExt.buttonSize;
+import static mfe.MapFilterExt.*;
 import static mindustry.Vars.ui;
 
 /**
@@ -61,7 +61,16 @@ public class GuideSeqImage extends GridImage{
     public static void build(Table table){
         table.clear();
         table.table(tit -> {
-            tit.button("MFE-Guides", MapFilterExt.titleTogglet, () -> {
+            tit.button(String.valueOf(step), Styles.flatt, () -> {}).with(tb -> {
+                tb.getLabel().setWrap(false);
+                tb.clicked(() -> {
+                    if(step == 1f) step = 0.1f;
+                    else if(step == 0.1f) step = 0.01f;
+                    else if(step == 0.01f) step = 10f;
+                    else step = 1f;
+                });
+            }).update(tb -> tb.setText(String.valueOf(step)));
+            tit.button("MFE-Guides", titleTogglet, () -> {
                 minimize = !minimize;
                 rebuild();
             }).with(b -> b.getLabel().setWrap(false)).checked(minimize).growX();
@@ -107,6 +116,7 @@ public class GuideSeqImage extends GridImage{
         }).fillX().minWidth(200f);
 
         if(minimize) return;
+
         table.row();
 
         table.pane(p1 -> {
@@ -145,6 +155,7 @@ public class GuideSeqImage extends GridImage{
 
             t.labelWrap("@guide.vanilla.info").fill();
             t.labelWrap("@guide.expression.info").fill();
+            t.labelWrap("@guide.curve.info").fill();
         }).growY();
     }
 

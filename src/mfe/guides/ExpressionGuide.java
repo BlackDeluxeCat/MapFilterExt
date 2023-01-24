@@ -16,9 +16,8 @@ import mindustry.ui.*;
 import static mfe.MapFilterExt.*;
 import static mindustry.Vars.*;
 
-/** exp2 works as stroke function */
 public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
-    public Expression exp = new Expression(), exp2 = new Expression();
+    public Expression exp = new Expression(), strokeexp = new Expression();
 
     protected transient boolean graphChanged = true;
     protected transient float drawStep = 0.5f;
@@ -27,7 +26,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     protected transient Texture texture;
     protected transient TextureRegion region;
 
-    public boolean detailStep = true, centerStroke = true, polar = false;
+    public boolean detailGraph = true, centerStroke = true, polar = false;
     protected static final IntSeq tilesSort = new IntSeq();
     /**Handle vars.*/
     protected Seq<Variable> vars = new Seq<>();
@@ -41,30 +40,30 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
         varsTable = new Table();
 
-        buttons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis);
+        buttons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis).name("axis");
         buttons.button(polar ? uiCoordsysPolar : uiCoordsysRect, Styles.flati, buttonSize, () -> {}).with(b -> {
             b.clicked(() -> {
                 polar = !polar;
                 b.getStyle().imageUp = (polar ? uiCoordsysPolar : uiCoordsysRect);
                 graphChanged = true;
             });
-        });
-        buttons.button(detailStep ? uiStep025 : uiStep05, Styles.flati, buttonSize, () -> {}).with(b -> {
+        }).name("polar");
+        buttons.button(detailGraph ? uiStep025 : uiStep05, Styles.flati, buttonSize, () -> {}).with(b -> {
             b.clicked(() -> {
-                detailStep = !detailStep;
-                drawStep = detailStep ? 0.25f : 0.5f;
-                b.getStyle().imageUp = (detailStep ? uiStep025 : uiStep05);
+                detailGraph = !detailGraph;
+                drawStep = detailGraph ? 0.25f : 0.5f;
+                b.getStyle().imageUp = (detailGraph ? uiStep025 : uiStep05);
                 graphChanged = true;
             });
-        });
+        }).name("detailStep");
         buttons.button(centerStroke ? uiStrokeCenter : uiStrokeAdd, Styles.flati, buttonSize, () -> {}).with(b -> {
             b.clicked(() -> {
                 centerStroke = !centerStroke;
                 b.getStyle().imageUp = (centerStroke ? uiStrokeCenter : uiStrokeAdd);
                 graphChanged = true;
             });
-        });
-        buttons.button("" + Iconc.fill, Styles.flatt, () -> ui.showConfirm("Fill with " + editor.drawBlock.localizedName + " ?", this::fill));
+        }).name("centerStroke");
+        buttons.button("" + Iconc.fill, Styles.flatt, () -> ui.showConfirm("Fill with " + editor.drawBlock.localizedName + " ?", this::fill)).name("fill");
     }
 
     @Override
@@ -119,16 +118,16 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     public void consTiles(Cons<Vec2> cons, float step){
         //re-parse for imported data init.
         if(!exp.vaild) exp.parse(exp.expression, this);
-        if(!exp2.vaild) exp2.parse(exp2.expression, this);
-        if(!exp.vaild || !exp2.vaild) return;
+        if(!strokeexp.vaild) strokeexp.parse(strokeexp.expression, this);
+        if(!exp.vaild || !strokeexp.vaild) return;
 
         for(float x = 0; x < getIW(); x += step){
             for(float y = 0; y < getIH(); y += step){
                 projt2g(ptile.set(x, y));
                 if(polar){
-                    varx.v = Mathf.mod(Tmp.v1.set(ptile).angleRad() + 2*Mathf.pi, 2*Mathf.pi);
+                    varx.v = Mathf.mod(ptile.angleRad() + 2*Mathf.pi, 2*Mathf.pi);
                     pcur.set(exp.get(), 0f).rotateRad(varx.v);
-                    pstk.set(exp2.get(), 0f);
+                    pstk.set(strokeexp.get(), 0f);
                     if(Mathf.zero(pstk.x)) continue;//zero stroke should be skipped
                     pstk.rotateRad(varx.v);
 
@@ -137,7 +136,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
                 }else{
                     varx.v = ptile.x;
                     pcur.set(ptile.x, exp.get());
-                    pstk.set(ptile.x, exp2.get());
+                    pstk.set(ptile.x, strokeexp.get());
                     if(Mathf.zero(pstk.y)) continue;//zero stroke should be skipped
 
                     if(centerStroke) pcur.sub(0f, pstk.y / 2f);
@@ -177,15 +176,15 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
         table.table(tfill -> {
             tfill.add("s(x)=");
-            if(exp2.expression.length() == 0) exp2.parse("4", this);
-            tfill.field(exp2.expression, s -> {
-                if(exp2.parse(s, this)) onExpressionUpdate(varsTable);
+            if(strokeexp.expression.length() == 0) strokeexp.parse("4", this);
+            tfill.field(strokeexp.expression, s -> {
+                if(strokeexp.parse(s, this)) onExpressionUpdate(varsTable);
             }).update(f -> {
-                f.color.set(exp2.vaild ? Color.white : Color.scarlet);
+                f.color.set(strokeexp.vaild ? Color.white : Color.scarlet);
             }).growX();
             tfill.row();
             tfill.add();
-            tfill.label(() -> exp2.expression).height(0.1f).color(Color.clear).padLeft(50f);
+            tfill.label(() -> strokeexp.expression).height(0.1f).color(Color.clear).padLeft(50f);
         }).left();
 
         table.row();
@@ -198,7 +197,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         graphChanged = true;
 
         t.clear();
-        vars.removeAll(v -> exp.vaild && exp2.vaild && !(exp.vars.contains(v.n) || exp2.vars.contains(v.n)));
+        vars.removeAll(v -> exp.vaild && strokeexp.vaild && !(exp.vars.contains(v.n) || strokeexp.vars.contains(v.n)));
         final int[] c = {0};
         vars.each(var -> {
             addDragableFloatInput.get(v -> {

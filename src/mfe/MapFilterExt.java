@@ -25,6 +25,7 @@ import static mindustry.Vars.ui;
 
 public class MapFilterExt extends Mod{
     public static float buttonSize = 32f;
+    public static float step = 1f;
 
     public MapFilterExt(){
         Events.on(ClientLoadEvent.class, e -> {
@@ -93,7 +94,7 @@ public class MapFilterExt extends Mod{
             public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
                 super.pan(event, x, y, deltaX, deltaY);
                 cancelScroll();
-                setter.get((float)Mathf.floor(getter.get() + deltaX / 2f));
+                setter.get((float)Mathf.floor(getter.get() + deltaX / 2f * step));
                 f.setText(String.valueOf(getter.get()));
             }
 
@@ -102,7 +103,7 @@ public class MapFilterExt extends Mod{
                 super.tap(event, x, y, count, button);
                 if(count >= 2){
                     setter.get(0f);
-                    f.setText(String.valueOf(getter.get()));
+                    f.setText(String.valueOf(getter.get() * step));
                 }
             }
         });
