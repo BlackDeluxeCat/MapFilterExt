@@ -1,6 +1,7 @@
 package mfe.math;
 
 import arc.math.*;
+import arc.util.noise.*;
 
 public enum Ops{
     e("e", () -> Mathf.E),
@@ -25,14 +26,16 @@ public enum Ops{
     min("min", Math::min, 5),
     len("len", Mathf::len, 5),
     sin("sin", a -> Mathf.sin(a), 5),
-    cos("cos", Mathf::cos, 5),
+    cos("cos", a -> Mathf.cos(a), 5),
     tan("tan", a -> Mathf.tan(a, 1f, 1f), 5),
     asin("arcsin", a -> (float)Math.asin(a), 5),
     acos("arccos", a -> (float)Math.acos(a), 5),
     atan("arctan", a -> (float)Math.atan(a), 5),
+    noise("noise", (x, y, seed) -> (float)Simplex.raw2d((int)seed, x, y), 5),
     ;
     public final String symbol;
     public final float l;
+    public final Op3 op3;
     public final Op2 op2;
     public final Op1 op1;
     public final Op0 op0;
@@ -44,6 +47,7 @@ public enum Ops{
         op0 = op;
         op1 = null;
         op2 = null;
+        op3 = null;
         ary = 0;
     }
 
@@ -53,6 +57,7 @@ public enum Ops{
         op0 = null;
         op1 = op;
         op2 = null;
+        op3 = null;
         ary = 1;
     }
 
@@ -62,22 +67,37 @@ public enum Ops{
         op0 = null;
         op1 = null;
         op2 = op;
+        op3 = null;
         ary = 2;
+    }
+
+    Ops(String symbol, Op3 op, float lvl){
+        this.symbol = symbol;
+        l = lvl;
+        op0 = null;
+        op1 = null;
+        op2 = null;
+        op3 = op;
+        ary = 3;
     }
 
     public boolean match(String str){
         return str.equals(this.symbol);
     }
 
-    public interface Op2{
-        float get(float a1, float a2);
+    public interface Op0{
+        float get();
     }
 
     public interface Op1{
         float get(float a);
     }
 
-    public interface Op0{
-        float get();
+    public interface Op2{
+        float get(float a1, float a2);
+    }
+
+    public interface Op3{
+        float get(float a1, float a2, float a3);
     }
 }

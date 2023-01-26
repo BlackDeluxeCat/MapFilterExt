@@ -13,10 +13,10 @@ public class Expression{
     /**RPN in stack.*/
     protected transient Seq<Object> rpn = new Seq<>();
     //split before/behind any number, x, (, )
-    protected static Pattern splitPattern = Pattern.compile("[, ]|(?=[x()])|(?<=[x()])");  //just use space.
-    protected static Matcher varMatcher = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]*$").matcher("");
+    protected static Pattern splitPattern = Pattern.compile(" |(?=[(),])|(?<=[(),])");  //just use space.
+    protected static Matcher varMatcher = Pattern.compile("^[a-zA-Z_\\u4e00-\\u9fa5][0-9a-zA-Z_\\u4e00-\\u9fa5]*$").matcher("");
     /**Stack everything including op, constants, user variable instances.*/
-    protected transient FloatSeq stk = new FloatSeq();
+    protected transient FloatSeq stk = new FloatSeq(), args = new FloatSeq();
     public transient boolean vaild = false;
     public String expression = "";
 
@@ -41,13 +41,18 @@ public class Expression{
                     braceL += 1;
                     continue;
                 }
-                if(sp.equals(")")){
+                
+                if(sp.equals(",") || sp.equals(")")){
                     while(!seq.isEmpty()){
                         Object top = seq.pop();
-                        if(top.equals("(")) break;
+                        if(top.equals("(") || top.equals(",")) break;
                         rpn.add(top);
                     }
-                    braceR += 1;
+                    if(sp.equals(",")){
+                        seq.add(sp);
+                    }else{
+                        braceR += 1;
+                    }
                     continue;
                 }
 
@@ -102,12 +107,13 @@ public class Expression{
             if(obj instanceof Variable svar) stk.add(svar.v);//user vars
             if(obj instanceof Float f) stk.add(f);//constants
             if(obj instanceof Ops ops){//operations
-                if(ops.op1 != null) stk.add(ops.op1.get(stk.pop()));
-                if(ops.op2 != null){
-                    float b = stk.pop();
-                    float a = stk.pop();
-                    stk.add(ops.op2.get(a, b));
+                args.clear();
+                for(int ig = 0; ig < ops.ary; ig++){
+                    args.add(stk.pop());
                 }
+                if(ops.op1 != null) stk.add(ops.op1.get(args.pop()));
+                if(ops.op2 != null) stk.add(ops.op2.get(args.pop(), args.pop()));
+                if(ops.op3 != null) stk.add(ops.op3.get(args.pop(), args.pop(), args.pop()));
             }
         }
         return stk.get(stk.size - 1);
