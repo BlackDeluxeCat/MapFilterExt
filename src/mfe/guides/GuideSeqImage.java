@@ -65,8 +65,6 @@ public class GuideSeqImage extends GridImage{
                 tb.getLabel().setWrap(false);
                 tb.clicked(() -> {
                     if(step == 1f) step = 0.1f;
-                    else if(step == 0.1f) step = 0.01f;
-                    else if(step == 0.01f) step = 10f;
                     else step = 1f;
                 });
             }).update(tb -> tb.setText(String.valueOf(step)));

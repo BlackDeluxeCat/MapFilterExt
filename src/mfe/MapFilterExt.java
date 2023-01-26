@@ -94,8 +94,8 @@ public class MapFilterExt extends Mod{
             public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
                 super.pan(event, x, y, deltaX, deltaY);
                 cancelScroll();
-                setter.get((float)Mathf.floor(getter.get() + deltaX / 2f * step));
-                f.setText(String.valueOf(getter.get()));
+                setter.get(Mathf.round(getter.get() + deltaX / 2f * step, 0.1f));
+                f.setText(Strings.fixed(getter.get(), 1));
             }
 
             @Override
@@ -103,7 +103,7 @@ public class MapFilterExt extends Mod{
                 super.tap(event, x, y, count, button);
                 if(count >= 2){
                     setter.get(0f);
-                    f.setText(String.valueOf(getter.get() * step));
+                    f.setText(String.valueOf(getter.get()));
                 }
             }
         });
