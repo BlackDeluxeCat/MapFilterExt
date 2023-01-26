@@ -27,7 +27,7 @@ public class CurveGuide extends ExpressionGuide{
             }).update(f -> {
                 f.color.set(exp.vaild ? Color.white : Color.scarlet);
             }).growX();
-            tline.add("=0");
+            tline.label(() -> centerStroke ? "@guide.curve.neighborhood.center" : "@guide.curve.neighborhood.add");
             tline.row();
             tline.add();
             tline.label(() -> exp.expression).height(0.1f).color(Color.clear).padLeft(50f);
@@ -56,7 +56,6 @@ public class CurveGuide extends ExpressionGuide{
 
     @Override
     public void consTiles(Cons<Vec2> cons, float step){
-        super.consTiles(cons, step);
         //re-parse for imported data init.
         if(!exp.vaild) exp.parse(exp.expression, this);
         if(!strokeexp.vaild) strokeexp.parse(strokeexp.expression, this);
@@ -72,13 +71,13 @@ public class CurveGuide extends ExpressionGuide{
                     varx.v = ptile.x;
                     vary.v = ptile.y;
                 }
-                //高差法: 求函数值z=C(x,y)是否落在指定0的邻域内. 零点法效果不好.
+                //高差法: 求函数值z=C(x,y)是否落在指定的区间内. 零点法效果不好.
                 float dz = strokeexp.get();
                 if(Mathf.zero(dz)) continue;//zero stroke should be skipped
                 float cz = exp.get();
-                if(centerStroke && cz <= 0.5f * dz && cz >= -0.5f * dz){
+                if(centerStroke && cz <= dz && cz >= -dz){
                     cons.get(pcur.set(x, y));
-                }else if(cz >= 0f && cz <= dz){
+                }else if(!centerStroke && cz >= 0f && cz <= dz){
                     cons.get(pcur.set(x, y));
                 }
             }
