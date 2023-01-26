@@ -6,9 +6,9 @@ author: "BlackDeluxeCat"
 main: "mfe.MapFilterExt"
 
 description: "Added some useful filters.
-Copypaste, modified noise, grid. They works with a coords-transform kit."
+Added a powerful custom guide tool to map editor."
 
-version: 1.3
+version: 1.4
 minGameVersion: 141.1
 java: true
 hidden: true
