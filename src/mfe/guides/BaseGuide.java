@@ -173,4 +173,7 @@ public class BaseGuide{
     public static float iposy(){
         return guidesImage.y;
     }
+
+    /**Call on map resize.*/
+    public void onResize(){}
 }

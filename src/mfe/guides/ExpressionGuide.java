@@ -234,6 +234,13 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     }
 
     @Override
+    public void onResize(){
+        exp.parse(exp.expression, this);
+        strokeexp.parse(strokeexp.expression, this);
+        updGraph();
+    }
+
+    @Override
     public Variable getVar(String vname){
         if(vname.equals("x")) return varx;
         if(vname.equals("y")) return vary;

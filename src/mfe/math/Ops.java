@@ -2,8 +2,11 @@ package mfe.math;
 
 import arc.math.*;
 import arc.util.noise.*;
+import mfe.guides.*;
 
 public enum Ops{
+    maph("@maph", () -> GuideSeqImage.guidesImage.imageHeight),
+    mapw("@mapw", () -> GuideSeqImage.guidesImage.imageWidth),
     e("e", () -> Mathf.E),
     pi("pi", () -> Mathf.pi),
     add("+", (a,b) -> a+b, 1),

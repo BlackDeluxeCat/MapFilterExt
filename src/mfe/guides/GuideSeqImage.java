@@ -39,6 +39,7 @@ public class GuideSeqImage extends GridImage{
         super.setImageSize(w, h);
         imageHeight = h;
         imageWidth = w;
+        guides.each(g -> g.onResize());
     }
 
     @Override
