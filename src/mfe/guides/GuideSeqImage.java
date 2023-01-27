@@ -62,13 +62,6 @@ public class GuideSeqImage extends GridImage{
     public static void build(Table table){
         table.clear();
         table.table(tit -> {
-            tit.button(String.valueOf(step), Styles.flatt, () -> {}).with(tb -> {
-                tb.getLabel().setWrap(false);
-                tb.clicked(() -> {
-                    if(step == 1f) step = 0.1f;
-                    else step = 1f;
-                });
-            }).update(tb -> tb.setText(String.valueOf(step)));
             tit.button("MFE-Guides", titleTogglet, () -> {
                 minimize = !minimize;
                 rebuild();

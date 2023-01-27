@@ -94,8 +94,8 @@ public class MapFilterExt extends Mod{
             public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
                 super.pan(event, x, y, deltaX, deltaY);
                 cancelScroll();
-                setter.get(Mathf.round(getter.get() + deltaX / 2f * step, 0.1f));
-                f.setText(Strings.fixed(getter.get(), 1));
+                setter.get(Mathf.floor(getter.get() + deltaX / 2f * step));
+                f.setText(Strings.fixed(getter.get(), 0));
             }
 
             @Override
