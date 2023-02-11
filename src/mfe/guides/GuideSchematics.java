@@ -32,11 +32,11 @@ public class GuideSchematics{
 
     public static void load(){
         JsonValue cfg = RefUtils.getValue(config, "cfg");
-        cfg.forEach(jv -> {
+        for(JsonValue jv : cfg){
             if(jv.name.startsWith(prefix)){
                 schematics.put(jv.name.substring(prefix.length()), jv.asString());
             }
-        });
+        }
     }
 
     public static void rebuild(){

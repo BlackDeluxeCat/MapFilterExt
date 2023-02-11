@@ -4,6 +4,7 @@ import arc.struct.*;
 
 import java.lang.reflect.*;
 
+//TODO update to MiTourLib
 public class MI2Utils{
     public static ObjectMap<String, Field> fields = new ObjectMap<>();
 
