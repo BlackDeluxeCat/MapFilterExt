@@ -14,7 +14,7 @@ Github Repo: BlackDeluxeCat/MapFilterExt
 
 Dependencies: [accent]BlackDeluxeCat/MiTour-Lib"
 
-version: 1.5
+version: 1.5.1
 minGameVersion: 141.1
 java: true
 hidden: true
