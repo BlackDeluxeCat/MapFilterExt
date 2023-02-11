@@ -5,7 +5,6 @@ import arc.graphics.*;
 import arc.math.*;
 import arc.math.geom.*;
 import arc.scene.ui.layout.*;
-import arc.util.*;
 
 public class CurveGuide extends ExpressionGuide{
     public CurveGuide(){

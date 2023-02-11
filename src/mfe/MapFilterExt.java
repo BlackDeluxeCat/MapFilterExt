@@ -11,6 +11,7 @@ import arc.util.*;
 import mfe.filters.*;
 import mfe.guides.*;
 import mfe.math.*;
+import mi2.setting.*;
 import mindustry.game.EventType.*;
 import mindustry.io.*;
 import mindustry.maps.*;
@@ -26,12 +27,17 @@ import static mindustry.Vars.ui;
 public class MapFilterExt extends Mod{
     public static float buttonSize = 32f;
     public static float step = 1f;
+    public static ConfigHandler config;
 
     public MapFilterExt(){
         Events.on(ClientLoadEvent.class, e -> {
-            initStyles();
-            addFilters();
             initGuideClassJsonIO();
+            config = ConfigHandler.request(this);
+            GuideSchematics.load();
+
+            initStyles();
+
+            addFilters();
             ui.editor.shown(GuideSeqImage::rebuild);
             buildSelect();
         });

@@ -14,6 +14,7 @@ import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 
 import static mfe.MapFilterExt.*;
+import static mindustry.Vars.editor;
 import static mindustry.Vars.ui;
 
 /**
@@ -105,6 +106,28 @@ public class GuideSeqImage extends GridImage{
                 clearGuides();
                 rebuild();
             })).size(buttonSize).with(tb -> tb.getLabel().setColor(Color.scarlet));
+
+            /*
+            tit.button("" + Iconc.map, Styles.flatBordert, () -> ui.showMenu("Mfe guide I/O to map tags", "Export/Import guides to/from map tags", new String[][]{{"Export", "Import", "Clear", "Return"}}, i -> {
+                var key = "MFE-Guide";
+                if(i == 0){
+                    editor.tags.put(key, JsonIO.write(guides));
+                }else if(i == 1){
+                    if(!editor.tags.containsKey(key)) return;
+                    try{
+                        clearGuides();
+                        guides.set(JsonIO.read(Seq.class, editor.tags.get(key)));
+                        rebuild();
+                    }catch(Throwable e){
+                        ui.showException(e);
+                        Log.err(e);
+                    }
+                }else if(i == 2){
+                    editor.tags.remove(key);
+                }
+            })).size(buttonSize);
+            */
+            tit.button("" + Iconc.list, Styles.flatBordert, () -> GuideSchematics.schematicsDialog.show()).size(buttonSize);
         }).fillX().minWidth(200f);
 
         if(minimize) return;
@@ -151,7 +174,7 @@ public class GuideSeqImage extends GridImage{
         }).growY();
     }
 
-    private static void clearGuides(){
+    public static void clearGuides(){
         guides.each(BaseGuide::onRemove);
         guides.clear();
     }
