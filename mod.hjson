@@ -1,14 +1,20 @@
-displayName: "Filter Ext"
+displayName: "Map Filter Ext"
 name: "MapFilterExt"
 author: "BlackDeluxeCat"
 
-#the fully qualified main class of the mod
 main: "mfe.MapFilterExt"
-
+dependencies: [
+"mitour-lib"
+]
 description: "Added some useful filters.
-Added a powerful custom guide tool to map editor."
+Added a powerful custom guide tool to map editor.
+添加实用的地图筛选器，添加强大的图像绘制工具。
 
-version: 1.4
+Github Repo: BlackDeluxeCat/MapFilterExt
+
+Dependencies: [accent]BlackDeluxeCat/MiTour-Lib"
+
+version: 1.5
 minGameVersion: 141.1
 java: true
 hidden: true
