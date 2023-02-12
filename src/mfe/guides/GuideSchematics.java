@@ -75,6 +75,8 @@ public class GuideSchematics{
                     b.row();
 
                     b.table(tt -> {
+                        tt.button("" + Iconc.copy, Styles.flatBordert, () -> Core.app.setClipboardText(sche)).size(buttonSize);
+
                         tt.button("" + Iconc.paste, Styles.flatBordert, () -> {
                             try{
                                 GuideSeqImage.clearGuides();
@@ -102,16 +104,17 @@ public class GuideSchematics{
                             }).fillY();
                         });
 
-                        tt.button("" + Iconc.cancel, Styles.flatBordert, () -> ui.showConfirm(Core.bundle.get("@schematic.delete.confirm") + ": " + name, () -> {
+                        tt.button("" + Iconc.cancel, Styles.flatBordert, () -> ui.showConfirm(Core.bundle.get("schematic.delete.confirm") + ": " + name, () -> {
                             schematics.remove(name);
                             save();
+                            rebuild();
                         })).size(buttonSize).with(tb -> tb.getLabel().setColor(Color.scarlet));
                     }).left();
                     b.row();
                     b.labelWrap(sche).grow().maxHeight(150f).with(l -> l.setAlignment(Align.topLeft)).color(Color.gray);
                 }).size(400f, 250f).pad(4f);
 
-                if(Mathf.mod(++co[0], Math.max(1, Core.graphics.getWidth() / 410)) == 0) t.row();
+                if(Mathf.mod(++co[0], Math.max(1, Core.graphics.getWidth() / 500)) == 0) t.row();
             });
         }).grow();
     }
