@@ -69,7 +69,6 @@ public class MapFilterExt extends Mod{
         JsonIO.json.addClassTag(ExpressionGuide.class.getSimpleName(), ExpressionGuide.class);
         JsonIO.json.addClassTag(VanillaGridGuide.class.getSimpleName(), VanillaGridGuide.class);
         JsonIO.json.addClassTag(CurveGuide.class.getSimpleName(), CurveGuide.class);
-        JsonIO.json.addClassTag(Variable.class.getSimpleName(), Variable.class);
     }
 
     public static TextButton.TextButtonStyle titleTogglet;

@@ -62,6 +62,10 @@ public class BaseGuide{
             title.button(name, titleTogglet, () -> enable = !enable).grow().pad(2f).with(b -> {
                 b.update(() -> b.getLabel().setColor(color.r, color.g, color.b, color.a * (enable ? 1f : 0.5f)));
             }).checked(enable).minWidth(200f);
+            title.label(() -> "" + (enable ? Iconc.eye : Iconc.eyeOff)).size(0.5f,10f).with(l -> {
+                l.setColor(1f,1f,1f,0.3f);
+                l.setAlignment(Align.right);
+            });
 
             title.button("" + Iconc.pick, Styles.flatt, () -> Vars.ui.picker.show(color, true, c -> color.set(c)))
                     .update(b -> b.getLabel().setColor(color)).size(buttonSize).pad(2f);

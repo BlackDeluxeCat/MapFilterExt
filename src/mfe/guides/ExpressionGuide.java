@@ -3,8 +3,10 @@ package mfe.guides;
 import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
+import arc.input.*;
 import arc.math.*;
 import arc.math.geom.*;
+import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
@@ -14,10 +16,12 @@ import mindustry.gen.*;
 import mindustry.ui.*;
 
 import static mfe.MapFilterExt.*;
+import static mfe.guides.GuideSeqImage.cancelScroll;
 import static mindustry.Vars.*;
 
 public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
-    public Expression exp = new Expression(), strokeexp = new Expression();
+    /** root expressions, shouldn't be added to exps*/
+    public Expression exp = new Expression("_MAIN"), strokeexp = new Expression("_STROKE");
 
     protected transient boolean graphChanged = true;
     protected transient float drawStep = 0.5f;
@@ -28,17 +32,20 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
     public boolean detailGraph = true, centerStroke = true, polar = false;
     protected static final IntSeq tilesSort = new IntSeq();
+
     /**Handle vars.*/
-    protected Seq<Variable> vars = new Seq<>();
-    protected transient Variable varx, vary;
-    protected transient Table varsTable;
+    protected Seq<Expression> exps = new Seq<>();
+    public transient Seq<String> used = new Seq<>();
+    public transient int valid;
+    protected transient Expression varx, vary;
+    protected transient Table expsTable;
 
     public ExpressionGuide(){
-        varx = new Variable("x");
-        vary = new Variable("y");
+        varx = new Expression("x");
+        vary = new Expression("y");
         name = "@guide.expression";
 
-        varsTable = new Table();
+        expsTable = new Table();
 
         buttons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis).name("axis");
         buttons.button(polar ? uiCoordsysPolar : uiCoordsysRect, Styles.flati, buttonSize, () -> {}).with(b -> {
@@ -97,18 +104,14 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     }
 
     public void fill(){
-        float brush = editor.brushSize;
-        editor.brushSize = 1f;
         tilesSort.clear();
 
         consTiles(p -> tilesSort.add(Point2.pack((int)p.x, (int)p.y)), 1f);
 
-        //rotated coordinates says it needs sorting!
         tilesSort.each(pos -> {
             editor.drawBlocks(Point2.x(pos), Point2.y(pos), false, editor.drawBlock.isOverlay(), t -> true);
         });
 
-        editor.brushSize = brush;
         editor.flushOp();
     }
 
@@ -116,25 +119,22 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     protected transient Rect line = new Rect();
     /**Project tile view to graph and check whether each point is close to curve and should invoke the consumer or not.*/
     public void consTiles(Cons<Vec2> cons, float step){
-        //re-parse for imported data init.
-        if(!exp.vaild) exp.parse(exp.expression, this);
-        if(!strokeexp.vaild) strokeexp.parse(strokeexp.expression, this);
-        if(!exp.vaild || !strokeexp.vaild) return;
+        if(valid != 1) return;
 
         for(float x = 0; x < getIW(); x += step){
             for(float y = 0; y < getIH(); y += step){
                 projt2g(ptile.set(x, y));
                 if(polar){
-                    varx.v = Mathf.mod(ptile.angleRad() + 2*Mathf.pi, 2*Mathf.pi);
-                    pcur.set(exp.get(), 0f).rotateRad(varx.v);
+                    varx.parse(Mathf.mod(ptile.angleRad() + 2*Mathf.pi, 2*Mathf.pi));
+                    pcur.set(exp.get(), 0f).rotateRad(varx.get());
                     pstk.set(strokeexp.get(), 0f);
                     if(Mathf.zero(pstk.x)) continue;//zero stroke should be skipped
-                    pstk.rotateRad(varx.v);
+                    pstk.rotateRad(varx.get());
 
                     if(centerStroke) pcur.mulAdd(pstk, -1f / 2f);
                     pstk.add(pcur);
                 }else{
-                    varx.v = ptile.x;
+                    varx.parse(ptile.x);
                     pcur.set(ptile.x, exp.get());
                     pstk.set(ptile.x, strokeexp.get());
                     if(Mathf.zero(pstk.y)) continue;//zero stroke should be skipped
@@ -159,52 +159,67 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
         table.row();
 
+        table.collapser(t -> t.label(() -> Iconc.warning + switch(valid){
+            case 1 -> "@validstats.valid";
+            case 0 -> "@validstats.invalidexp";
+            case -1 -> "@validstats.circularrefer";
+            default -> "@validstats.unknown";
+        }).color(Color.scarlet), () -> valid != 1);
+
+        table.row();
+
         table.table(tline -> {
-            tline.add("f(x)=");
+            tline.add("f(x)=").color(Color.acid);
             if(exp.expression.length() == 0) exp.parse("x", this);
             tline.field(exp.expression, s -> {
-                if(exp.parse(s, this)) onExpressionUpdate(varsTable);
+                exp.parse(s, this);
+                onExpressionUpdate(expsTable);
             }).update(f -> {
-                f.color.set(exp.vaild ? Color.white : Color.scarlet);
+                f.color.set(exp.valid ? Color.white : Color.scarlet);
             }).growX();
             tline.row();
             tline.add();
-            tline.label(() -> exp.expression).height(0.1f).color(Color.clear).padLeft(50f);
+            tline.label(() -> exp.expression).height(0.1f).color(Color.clear).padLeft(50f).maxWidth(200f);
         }).left();
 
         table.row();
 
         table.table(tfill -> {
-            tfill.add("s(x)=");
+            tfill.add("s(x)=").color(Color.acid);
             if(strokeexp.expression.length() == 0) strokeexp.parse("4", this);
             tfill.field(strokeexp.expression, s -> {
-                if(strokeexp.parse(s, this)) onExpressionUpdate(varsTable);
+                strokeexp.parse(s, this);
+                onExpressionUpdate(expsTable);
             }).update(f -> {
-                f.color.set(strokeexp.vaild ? Color.white : Color.scarlet);
+                f.color.set(strokeexp.valid ? Color.white : Color.scarlet);
             }).growX();
             tfill.row();
             tfill.add();
-            tfill.label(() -> strokeexp.expression).height(0.1f).color(Color.clear).padLeft(50f);
+            tfill.label(() -> strokeexp.expression).height(0.1f).color(Color.clear).padLeft(50f).maxWidth(200f);
         }).left();
 
         table.row();
 
-        onExpressionUpdate(varsTable);
-        table.add(varsTable).fill();
+        onExpressionUpdate(expsTable);
+        table.add(expsTable).fill();
     }
 
     public void onExpressionUpdate(Table t){
+        valid = reParse();
         graphChanged = true;
 
-        t.clear();
-        vars.removeAll(v -> exp.vaild && strokeexp.vaild && !(exp.vars.contains(v.n) || strokeexp.vars.contains(v.n)));
-        final int[] c = {0};
-        vars.each(var -> {
-            addDragableFloatInput.get(v -> {
-                var.v = v;
-                graphChanged = true;
-                }, () -> var.v, t.add(var.n + "=").right().get(), t.add(new TextField()).get());
-            if(Mathf.mod(++c[0], 2) == 0) t.row();
+        exps.removeAll(e -> exp.valid && strokeexp.valid && !exp.expNames.contains(e.name) && !strokeexp.expNames.contains(e.name) && !exps.contains(e2 -> e2.expNames.contains(e.name)));
+
+        t.getChildren().each(e -> {
+            if(e.name == null || !exps.contains(exp -> exp.name.equals(e.name))) e.remove();
+        });
+        exps.each(exp -> {
+            if(t.find(exp.name) == null){
+                t.table(tt -> {
+                    addDragableExpressionInput(exp, tt.add(exp.name + "=").right().get(), tt.add(new TextField()).growX().get());
+                }).name(exp.name).growX();
+                t.row();
+            }
         });
     }
 
@@ -235,20 +250,74 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
     @Override
     public void onResize(){
-        exp.parse(exp.expression, this);
-        strokeexp.parse(strokeexp.expression, this);
-        updGraph();
+        graphChanged = true;
     }
 
     @Override
-    public Variable getVar(String vname){
-        if(vname.equals("x")) return varx;
-        if(vname.equals("y")) return vary;
+    public Expression getExpression(String name){
+        if(name.equals("x")) return varx;
+        if(name.equals("y")) return vary;
 
-        var var = vars.find(v -> v.n.equals(vname));
+        Expression var = exps.find(v -> v.name.equals(name));
         if(var == null){
-            vars.add(var = new Variable(vname));
+            exps.add(var = new Expression(name));
+            var.parse(1f);
         }
         return var;
+    }
+
+    public int reParse(){
+        exps.each(e -> e.reParse(this));
+        exp.reParse(this);
+        strokeexp.reParse(this);
+        if(exps.count(exp -> !exp.valid) > 0 || !exp.valid || !strokeexp.valid) return 0;
+        //check circular reference
+        used.clear();
+        for(int i = 0; i < 1000; i++){
+            if(exps.count(e -> {
+                if(!used.contains(e.name) && e.expNames.count(e2 -> !e2.equals(varx.name) && !e2.equals(vary.name) && !used.contains(e2)) == 0){
+                    used.add(e.name);
+                    return true;
+                }
+                return false;
+            }) == 0) break;
+        }
+        return used.size == exps.size ? 1 : -1;
+    }
+
+    public void addDragableExpressionInput(Expression e, Label l, TextField f){
+        f.setText(e.expression);
+        f.changed(() -> {
+            if(Strings.canParseFloat(f.getText())){
+                e.parse(Strings.parseFloat(f.getText()));
+            }else{
+                e.parse(f.getText(), this);
+                onExpressionUpdate(expsTable);
+            }
+        });
+        f.update(() -> f.color.set(e.valid ? Color.white : Color.scarlet));
+        l.update(() -> l.setColor(e.isVar() ? Color.royal : Color.acid));
+        l.addListener(new ElementGestureListener(){
+            @Override
+            public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
+                super.pan(event, x, y, deltaX, deltaY);
+                if(!e.isVar()) return;
+                cancelScroll();
+                e.parse(Mathf.floor(e.get() + deltaX / 2f * step));
+                f.setText(String.valueOf(e.get()));
+                graphChanged = true;
+            }
+
+            @Override
+            public void tap(InputEvent event, float x, float y, int count, KeyCode button){
+                super.tap(event, x, y, count, button);
+                if(!e.isVar()) return;
+                if(count >= 2){
+                    e.parse(0f);
+                    f.setText("0");
+                }
+                graphChanged = true;
+            }
+        });
     }
 }

@@ -9,7 +9,8 @@ import java.util.regex.*;
 public class Expression{
     /**signs of variables, used for checking.
      * variable instances get from {@link ExpressionHandler}*/
-    public transient Seq<String> vars = new Seq<>();
+    public String name = "";
+    public transient Seq<String> expNames = new Seq<>();
     /**RPN in stack.*/
     protected transient Seq<Object> rpn = new Seq<>();
     //split before/behind any number, x, (, )
@@ -17,17 +18,35 @@ public class Expression{
     protected static Matcher varMatcher = Pattern.compile("^[a-zA-Z_\\u4e00-\\u9fa5][0-9a-zA-Z_\\u4e00-\\u9fa5]*$").matcher("");
     /**Stack everything including op, constants, user variable instances.*/
     protected transient FloatSeq stk = new FloatSeq(), args = new FloatSeq();
-    public transient boolean vaild = false;
+    public transient boolean valid = false;
     public String expression = "";
 
-    public Expression(){
+    /** For Serialization. */
+    public Expression(){}
+
+    public Expression(String name){
+        this.name = name;
+    }
+
+    /** Let expression work as a variable. */
+    public void parse(float value){
+        expression = String.valueOf(value);
+        rpn.clear();
+        expNames.clear();
+        rpn.add(value);
+        valid = true;
+    }
+
+    public boolean reParse(ExpressionHandler handler){
+        if(isVar()) return valid = true;
+        return parse(expression, handler);
     }
 
     /**parse a string to RPN.*/
     public boolean parse(String str, ExpressionHandler handler){
         this.expression = str;
         rpn.clear();
-        vars.clear();
+        expNames.clear();
         int arys = 0, consumes = 0, braceL = 0, braceR = 0;
         Seq<Object> seq = new Seq<>();
         try{
@@ -79,9 +98,9 @@ public class Expression{
                 if(Strings.canParseFloat(sp)){//constants
                     rpn.add(Float.parseFloat(sp));
                     arys += 1;
-                }else if(varMatcher.reset(sp).matches()){//user vars
-                    rpn.add(handler.getVar(sp));
-                    vars.addUnique(sp);
+                }else if(varMatcher.reset(sp).matches()){//user expressions
+                    rpn.add(handler.getExpression(sp));
+                    expNames.add(sp);
                     arys += 1;
                 }
             }
@@ -90,23 +109,27 @@ public class Expression{
                 rpn.add(seq.pop());
             }
         }catch(Exception err){
-            vaild = false;
+            valid = false;
             Log.err("Failure parsing expression: " + str, err);
             return false;
         }
-        vaild = (arys - consumes == 1) && (braceL == braceR);
-        return vaild;
+        valid = (arys - consumes == 1) && (braceL == braceR);
+        return valid;
+    }
+
+    public boolean isVar(){
+        return valid && rpn.size == 1;
     }
 
     /**get result with a vars map.*/
     public float get(){
-        if(!vaild) return 0f;
+        if(!valid) return 0f;
         stk.clear();
         for(int i = 0; i < rpn.size; i++){
             Object obj = rpn.get(i);
-            if(obj instanceof Variable svar) stk.add(svar.v);//user vars
-            if(obj instanceof Float f) stk.add(f);//constants
-            if(obj instanceof Ops ops){//operations
+            if(obj instanceof Expression exp) stk.add(exp.get());//expression
+            if(obj instanceof Float f) stk.add(f);//constant
+            if(obj instanceof Ops ops){//operation
                 args.clear();
                 for(int ig = 0; ig < ops.ary; ig++){
                     args.add(stk.pop());

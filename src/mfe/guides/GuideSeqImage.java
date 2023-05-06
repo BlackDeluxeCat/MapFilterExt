@@ -14,8 +14,7 @@ import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 
 import static mfe.MapFilterExt.*;
-import static mindustry.Vars.editor;
-import static mindustry.Vars.ui;
+import static mindustry.Vars.*;
 
 /**
  * 地图编辑器的辅助线
@@ -23,7 +22,7 @@ import static mindustry.Vars.ui;
 public class GuideSeqImage extends GridImage{
     public static GuideSeqImage guidesImage = new GuideSeqImage(0, 0);
     public static Seq<BaseGuide> guides = new Seq<>(true);
-    public static BaseDialog selectDialog = new BaseDialog("Select New Guide Type");
+    public static BaseDialog selectDialog = new BaseDialog("@guide.adddialog");
     protected static ScrollPane paneList;
     protected static Table main = new Table();
     protected static boolean minimize = false;
@@ -38,6 +37,7 @@ public class GuideSeqImage extends GridImage{
     @Override
     public void setImageSize(int w, int h){
         super.setImageSize(w, h);
+        if(imageWidth == w && imageHeight == h) return;
         imageHeight = h;
         imageWidth = w;
         guides.each(g -> g.onResize());
@@ -66,7 +66,7 @@ public class GuideSeqImage extends GridImage{
             tit.button("MFE-Guides", titleTogglet, () -> {
                 minimize = !minimize;
                 rebuild();
-            }).with(b -> b.getLabel().setWrap(false)).checked(minimize).growX();
+            }).with(b -> b.getLabel().setWrap(false)).checked(minimize).grow().height(buttonSize);
             tit.label(() -> "Mem:" + (int)(Core.app.getJavaHeap() / 1024 / 1024)).color(Tmp.c1.set(Color.green).a(0.7f)).style(Styles.outlineLabel).name("memory").width(0.5f).with(l -> {
                 l.setAlignment(Align.bottomRight);
                 l.setFontScale(0.7f);
@@ -149,7 +149,7 @@ public class GuideSeqImage extends GridImage{
                     Core.scene.setScrollFocus(ui.editor.getView());
                 }
             });
-        }).fillX().maxHeight(500f);
+        }).fillX().maxHeight(800f);
     }
 
     public static void cancelScroll(){
