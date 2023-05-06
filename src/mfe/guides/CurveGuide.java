@@ -22,7 +22,8 @@ public class CurveGuide extends ExpressionGuide{
             tline.add("C(x,y): ");
             if(exp.expression.length() == 0) exp.parse("x - y", this);
             tline.field(exp.expression, s -> {
-                if(exp.parse(s, this)) onExpressionUpdate(expsTable);
+                exp.parse(s, this);
+                onExpressionUpdate(expsTable);
             }).update(f -> {
                 f.color.set(exp.valid ? Color.white : Color.scarlet);
             }).growX();
@@ -38,7 +39,8 @@ public class CurveGuide extends ExpressionGuide{
             tfill.add("d(x,y)=");
             if(strokeexp.expression.length() == 0) strokeexp.parse("1", this);
             tfill.field(strokeexp.expression, s -> {
-                if(strokeexp.parse(s, this)) onExpressionUpdate(expsTable);
+                strokeexp.parse(s, this);
+                onExpressionUpdate(expsTable);
             }).update(f -> {
                 f.color.set(strokeexp.valid ? Color.white : Color.scarlet);
             }).growX();

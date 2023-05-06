@@ -1,5 +1,6 @@
 package mfe.guides;
 
+import arc.*;
 import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
@@ -154,22 +155,27 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     }
 
     @Override
+    public void buildOffsetConfigure(Table table, Runnable changed){
+        super.buildOffsetConfigure(table, changed);
+
+        table.row();
+
+        table.collapser(t -> t.label(() -> Iconc.warning + Core.bundle.get(switch(valid){
+            case 1 -> "validstats.valid";
+            case 0 -> "validstats.invalidexp";
+            case -1 -> "validstats.circularrefer";
+            default -> "validstats.unknown";
+        })).color(Color.scarlet), () -> valid != 1).colspan(4);
+    }
+
+    @Override
     public void buildContent(Table table){
         table.table(t -> buildOffsetConfigure(t, () -> graphChanged = true));
 
         table.row();
 
-        table.collapser(t -> t.label(() -> Iconc.warning + switch(valid){
-            case 1 -> "@validstats.valid";
-            case 0 -> "@validstats.invalidexp";
-            case -1 -> "@validstats.circularrefer";
-            default -> "@validstats.unknown";
-        }).color(Color.scarlet), () -> valid != 1);
-
-        table.row();
-
         table.table(tline -> {
-            tline.add("f(x)=").color(Color.acid);
+            tline.add("f(x)=");
             if(exp.expression.length() == 0) exp.parse("x", this);
             tline.field(exp.expression, s -> {
                 exp.parse(s, this);
@@ -185,7 +191,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         table.row();
 
         table.table(tfill -> {
-            tfill.add("s(x)=").color(Color.acid);
+            tfill.add("s(x)=");
             if(strokeexp.expression.length() == 0) strokeexp.parse("4", this);
             tfill.field(strokeexp.expression, s -> {
                 strokeexp.parse(s, this);
@@ -296,7 +302,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
             }
         });
         f.update(() -> f.color.set(e.valid ? Color.white : Color.scarlet));
-        l.update(() -> l.setColor(e.isVar() ? Color.royal : Color.acid));
+        l.update(() -> l.setColor(e.isVar() ? Color.cyan : Color.acid));
         l.addListener(new ElementGestureListener(){
             @Override
             public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
