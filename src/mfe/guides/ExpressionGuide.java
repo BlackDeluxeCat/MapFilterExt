@@ -296,6 +296,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         f.changed(() -> {
             if(Strings.canParseFloat(f.getText())){
                 e.parse(Strings.parseFloat(f.getText()));
+                graphChanged = true;
             }else{
                 e.parse(f.getText(), this);
                 onExpressionUpdate(expsTable);
