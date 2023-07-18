@@ -12,6 +12,7 @@ import mfe.filters.*;
 import mfe.guides.*;
 import mfe.math.*;
 import mi2.setting.*;
+import mindustry.editor.*;
 import mindustry.game.EventType.*;
 import mindustry.io.*;
 import mindustry.maps.*;
@@ -22,6 +23,7 @@ import mindustry.ui.*;
 import java.util.*;
 
 import static mfe.guides.GuideSeqImage.*;
+import static mindustry.Vars.editor;
 import static mindustry.Vars.ui;
 
 public class MapFilterExt extends Mod{
@@ -34,12 +36,14 @@ public class MapFilterExt extends Mod{
             initGuideClassJsonIO();
             config = ConfigHandler.request(this);
             GuideSchematics.load();
-
             initStyles();
+            Time.run(30f, () -> {
+                addFilters();
+                ui.editor.shown(GuideSeqImage::rebuild);
+                buildSelect();
+                if(editor.getClass() != MapEditor.class) ui.showOkText("", Core.bundle.format("warning.novanillaeditor", editor.getClass().getName()), () -> {});
+            });
 
-            addFilters();
-            ui.editor.shown(GuideSeqImage::rebuild);
-            buildSelect();
         });
     }
 

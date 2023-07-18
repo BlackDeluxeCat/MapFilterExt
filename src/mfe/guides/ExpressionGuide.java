@@ -13,6 +13,7 @@ import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
 import mfe.math.*;
+import mindustry.editor.*;
 import mindustry.gen.*;
 import mindustry.ui.*;
 
@@ -108,10 +109,28 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         tilesSort.clear();
 
         consTiles(p -> tilesSort.add(Point2.pack((int)p.x, (int)p.y)), 1f);
-
-        tilesSort.each(pos -> {
-            editor.drawBlocks(Point2.x(pos), Point2.y(pos), false, editor.drawBlock.isOverlay(), t -> true);
-        });
+        if(editor.getClass() == MapEditor.class){
+            tilesSort.each(pos -> {
+                editor.drawBlocks(Point2.x(pos), Point2.y(pos), false, editor.drawBlock.isOverlay(), t -> true);
+            });
+        }else{
+            ui.showCustomConfirm("", Core.bundle.format("warning.fill.novanillaeditor", editor.getClass().getName()), "@yes", "@no", () -> {
+                tilesSort.each(pos -> {
+                    editor.drawBlocks(Point2.x(pos), Point2.y(pos), false, editor.drawBlock.isOverlay(), t -> true);
+                });
+            }, () -> {
+                tilesSort.each(pos -> {
+                    var tile = editor.tile(Point2.x(pos), Point2.y(pos));
+                    if(editor.drawBlock.isOverlay()){
+                        tile.setOverlay(editor.drawBlock.asFloor());
+                    }else if(editor.drawBlock.isFloor()){
+                        tile.setFloorUnder(editor.drawBlock.asFloor());
+                    }else if(!tile.block().isMultiblock() || editor.drawBlock.isMultiblock()) {
+                        tile.setBlock(editor.drawBlock, editor.drawTeam, editor.rotation);
+                    }
+                });
+            });
+        }
 
         editor.flushOp();
     }
