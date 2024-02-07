@@ -8,6 +8,7 @@ import arc.scene.event.*;
 import arc.scene.style.*;
 import arc.scene.ui.*;
 import arc.util.*;
+import mfe.editor.*;
 import mfe.filters.*;
 import mfe.guides.*;
 import mfe.math.*;
@@ -42,6 +43,11 @@ public class MapFilterExt extends Mod{
                 ui.editor.shown(GuideSeqImage::rebuild);
                 buildSelect();
                 if(editor.getClass() != MapEditor.class) ui.showOkText("", Core.bundle.format("warning.novanillaeditor", editor.getClass().getName()), () -> {});
+                MapInfoDialog dialog = MI2Utils.getValue(ui.editor, "infoDialog");
+                dialog.shown(() -> {
+                    dialog.cont.row();
+                    dialog.cont.button("MFE WAVE INFO", () -> MFEWaveInfoDialog.mfewave.show()).size(200f);
+                });
             });
 
         });
