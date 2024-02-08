@@ -46,7 +46,7 @@ public class MapFilterExt extends Mod{
                 MapInfoDialog dialog = MI2Utils.getValue(ui.editor, "infoDialog");
                 dialog.shown(() -> {
                     dialog.cont.row();
-                    dialog.cont.button("MFE WAVE INFO", () -> MFEWaveInfoDialog.mfewave.show()).size(200f);
+                    dialog.cont.button("MFE WAVE INFO", () -> MFEWaveInfoDialog.mfewave.show()).size(200f, 50f);
                 });
             });
 
