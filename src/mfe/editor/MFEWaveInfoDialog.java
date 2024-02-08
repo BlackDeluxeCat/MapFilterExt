@@ -32,10 +32,10 @@ public class MFEWaveInfoDialog extends BaseDialog{
     public static MFEWaveInfoDialog mfewave = new MFEWaveInfoDialog();
     Seq<SpawnGroup> groups = new Seq<>();
     Seq<SpawnGroup> selectedGroups = new Seq<>();
-    int search = -1;
     WaveGraph graph = new WaveGraph();
     WaveCanvas canvas = new WaveCanvas();
     Table config;
+    int search = -1;
     float updateTimer, updatePeriod = 1f;
     boolean batchEditing;
     boolean checkedSpawns;
@@ -139,11 +139,12 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 showAnyContentsYouWant(content.units().copy().removeAll(UnitType::isHidden), "title", type -> groups.add(new SpawnGroup(type)), null);
                 buildGroups();
             });
-            tools.check("Batch Edit", b -> batchEditing = b);
+            tools.check("@waveinfo.batchedit", b -> batchEditing = b);
             tools.table(s -> {
                 s.image(Icon.zoom).padRight(8);
-                s.field(search < 0 ? "" : (search + 1) + "", TextField.TextFieldFilter.digitsOnly, text -> {
-                    search = groups.any() ? Strings.parseInt(text, 0) - 1 : -1;
+                s.field("", TextField.TextFieldFilter.digitsOnly, text -> {
+                    search = Math.max(Strings.parseInt(text, 1) - 1, 0);
+                    if(groups.any()) canvas.camera.x = Mathf.maxZero(canvas.tileW * search - canvas.getWidth() / 2f);
                     buildGroups();
                 }).growX().maxTextLength(8).get().setMessageText("@waves.search");
             });
@@ -172,11 +173,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
         float marginTop = 4f;
         for(SpawnGroup group : groups){
             canvas.addChild(new Table(){
+                boolean dragging;
                 {
                     margin(2f);
                     background(Tex.whiteui);
                     touchable = Touchable.enabled;
-
                     clicked(() -> {
                         if(!batchEditing){
                             if(!selectedGroups.remove(group)) selectedGroups.clear().add(group);
@@ -185,6 +186,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         }
                         buildConfig();
                     });
+                    setColor(color(group.type));
 
                     this.addListener(new InputListener(){
                         long time;
@@ -198,8 +200,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                         @Override
                         public void touchDragged(InputEvent event, float x, float y, int pointer){
-                            if(Time.millis() > time + 1000){
+                            if(Time.millis() > time + 1500){
+                                dragging = true;
                                 canvas.cancelDragging = true;
+                                selectedGroups.remove(group, true);
+                                buildConfig();
                                 setTranslation(x - downx + translation.x, translation.y);
                             }
                             super.touchDragged(event, x, y, pointer);
@@ -208,7 +213,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         @Override
                         public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
                             super.touchUp(event, x, y, pointer, button);
-                            if(Time.millis() > time + 1000){
+                            if(Time.millis() > time + 1500){
                                 int gap = group.end - group.begin;
                                 float dx = x - downx + translation.x;
                                 if(Math.abs(dx) > canvas.tileW){
@@ -219,6 +224,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                                 group.begin = Math.max(group.begin, 0);
                                 group.end = Math.max(group.end, gap);
                                 setTranslation(0f, 0f);
+                                dragging = false;
                             }
                         }
                     });
@@ -255,22 +261,26 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 @Override
                 protected void drawBackground(float x, float y){
                     boolean selected = selectedGroups.contains(group, true);
-                    color.set(Color.darkGray).a(selected ? 1f : 0.5f);
+                    Tmp.c2.set(color);
+                    color.set(Color.white).a(selected ? 1f : 0.3f);
                     super.drawBackground(x, y);
-                    Draw.color(selected ? Pal.accent : color(group.type));
+                    color.set(Tmp.c2);
+
+                    //spacing block
+                    Draw.color(selected ? Pal.accent : dragging ? Color.royal : color);
                     Draw.alpha(0.6f * parentAlpha);
                     Fill.rect(Tmp.r1.set(canvas.tileX(group.begin), y, canvas.tileX(group.end) + canvas.tileW - canvas.tileX(group.begin), canvas.tileH - marginTop));
 
+                    //spawning block
                     int start = canvas.getStartWave();
                     int end = canvas.getEndWave();
-                    Draw.color(selected ? Pal.accent : color(group.type));
                     Draw.alpha(this.parentAlpha);
                     for(int i = group.begin; i <= group.end && i <=end; i += group.spacing){
                         if(i < start) continue;
                         Fill.rect(Tmp.r1.set(canvas.tileX(i), y, canvas.tileX(i + 1) - canvas.tileX(i), canvas.tileH - marginTop));
                     }
                     Draw.reset();
-                    color.set(Color.white);
+                    color.a(1f);
                 }
             });
         }
@@ -280,7 +290,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
         if(config == null || selectedGroups.isEmpty()) return;
         var group = selectedGroups.get(selectedGroups.size - 1);
         config.clear();
-        config.button("Deselect", () -> selectedGroups.clear()).width(300f).row();
+        config.button("@waveinfo.deselect", () -> selectedGroups.clear()).width(300f).row();
         config.table(b -> {
             b.left();
             b.image(group.type.uiIcon).size(32f).padRight(3).scaling(Scaling.fit);
@@ -293,7 +303,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 buildGroups();
             }).pad(-6).size(46f).tooltip("@editor.copy").disabled(bb -> !batchEditing);
 
-            b.button(Icon.unitsSmall, Styles.emptyi, () -> showAnyContentsYouWant(content.units().copy().removeAll(UnitType::isHidden), "title", type -> {
+            b.button(Icon.unitsSmall, Styles.emptyi, () -> showAnyContentsYouWant(content.units().copy().removeAll(UnitType::isHidden), "", type -> {
                 batchEditing(g -> g.type = type);
                 buildConfig();
             }, null)).pad(-6).size(46f).tooltip("@stat.unittype");
@@ -672,6 +682,9 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 float dy = this.y;
                 Lines.dashLine(dx, dy + 16, dx, dy + getHeight(), 60);
                 if(Mathf.mod(i, gap) == 0) font.draw(String.valueOf(i + 1), dx + tileW/2f, dy + 12, Align.center);
+                if(search == i){
+                    Fill.rect(Tmp.r1.set(dx, dy, tileW, getHeight()));
+                }
             }
             font.setColor(Color.white);
             Draw.reset();
