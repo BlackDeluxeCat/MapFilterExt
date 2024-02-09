@@ -25,12 +25,13 @@ ext{
 allprojects{
     tasks.withType(JavaCompile){
         options.compilerArgs.addAll(['--release', '8'])
+        options.encoding("UTF-8")
     }
 }
 
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
-    compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
+    compileOnly ("com.github.Anuken.Mindustry:core:$mindustryVersion") { exclude module: 'flabel' }
     compileOnly "com.github.BlackDeluxeCat:MiTour-Lib:$libVersion"
 
     annotationProcessor "com.github.Anuken:jabel:$jabelVersion"
