@@ -9,6 +9,7 @@ import arc.math.*;
 import arc.math.geom.*;
 import arc.scene.actions.*;
 import arc.scene.event.*;
+import arc.scene.style.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
@@ -39,19 +40,26 @@ public class MFEWaveInfoDialog extends BaseDialog{
     float updateTimer, updatePeriod = 1f;
     boolean batchEditing;
     boolean checkedSpawns;
+
+
+    boolean showViewSettings;
+    @Nullable UnitType filterType;
+    boolean filterPayloads, filterItems, filterEffects;
     public MFEWaveInfoDialog(){
         super("@waves.title");
 
-        shown(() -> {
-            setup();
-            checkedSpawns = false;
-            batchEditing = false;
-        });
+        shown(this::setup);
         hidden(() -> {
-            if(state.isEditor() || state.isMenu()) state.rules.spawns = groups;
+            if(state.isEditor() || state.isMenu()){
+                //clean up invalid configs
+                groups.each(g -> {
+                    if(!(g.type instanceof Payloadc)) g.payloads = null;
+                    if(g.type.itemCapacity == 0) g.items = null;
+                });
+                state.rules.spawns = groups;
+            }
         });
 
-        onResize(this::setup);
         addCloseButton();
 
         buttons.button("@waves.edit", Icon.edit, () -> {
@@ -106,13 +114,14 @@ public class MFEWaveInfoDialog extends BaseDialog{
     void setup(){
         groups = JsonIO.copy(state.rules.spawns.isEmpty() ? waves.get() : state.rules.spawns);
         if(groups == null) groups = new Seq<>();
+        checkedSpawns = false;
+        batchEditing = false;
+        selectedGroups.clear();
 
         cont.clear();
 
         //main chart
         cont.table(main -> {
-            main.add();
-
             main.stack(canvas,
                 new Label("@waves.none"){{
                     visible(() -> groups.isEmpty());
@@ -120,21 +129,53 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     setWrap(true);
                     setAlignment(Align.center, Align.center);
                 }}, new Table(shell -> {
-                    shell.setFillParent(true);
                     shell.visible(() -> !selectedGroups.isEmpty());
                     shell.pane(t -> {
                         config = t;
-                        t.setClip(true);
                         t.background(Tex.button);
-                    }).left().bottom();
-                }).bottom().left()
-            ).grow().margin(10f);
+                    });
+                }).left().bottom(), new Table(shell -> {
+                    shell.visible(() -> showViewSettings);
+                    shell.pane(t -> {
+                        t.background(Tex.button);
+                        t.margin(16f);
+                        t.add("Filters").height(40f).grow().row();
+                        t.table(gf -> {
+                            gf.defaults().size(40f).pad(4f);
+
+                            gf.button(Icon.units, Styles.squarei, () -> showAnyContentsYouWant(groups.map(sg -> sg.type).asSet().toSeq().sort(type -> type.id), "", type -> {
+                                filterType = type;
+                                buildGroups();
+                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                            })).update(b -> b.getStyle().imageUp = filterType != null ? new TextureRegionDrawable(filterType.uiIcon) : Icon.units);
+
+                            gf.button(Icon.effect, Styles.squareTogglei, () -> {
+                                filterEffects = !filterEffects;
+                                buildGroups();
+                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                            });
+
+                            gf.button(Icon.box, Styles.squareTogglei, () -> {
+                                filterItems = !filterItems;
+                                buildGroups();
+                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                            });
+
+                            gf.button(Icon.itchioSmall, Styles.squareTogglei, () -> {
+                                filterPayloads = !filterPayloads;
+                                buildGroups();
+                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                            });
+                        });
+                    });
+                }).right().bottom()
+            ).grow().margin(16f);
         }).grow();
 
         cont.row();
 
         cont.table(tools -> {
-            tools.defaults().minWidth(120f).height(40f).left();
+            tools.defaults().minWidth(120f).height(60f).left();
             tools.button("@add", () -> {
                 showAnyContentsYouWant(content.units().copy().removeAll(UnitType::isHidden), "title", type -> groups.add(new SpawnGroup(type)), null);
                 buildGroups();
@@ -144,8 +185,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 s.image(Icon.zoom).padRight(8);
                 s.field("", TextField.TextFieldFilter.digitsOnly, text -> {
                     search = Math.max(Strings.parseInt(text, 1) - 1, 0);
-                    if(groups.any()) canvas.camera.x = Mathf.maxZero(canvas.tileW * search - canvas.getWidth() / 2f);
-                    buildGroups();
+                    if(groups.any()) canvas.locateWave(search);
                 }).growX().maxTextLength(8).get().setMessageText("@waves.search");
             });
             tools.add().growX().minWidth(0f);
@@ -160,18 +200,35 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     scaleX(1);
                 }
             }).width(60f);
+            tools.button(Icon.filter, () -> showViewSettings = !showViewSettings).checked(showViewSettings).width(60f);
         }).growX();
 
         //cont.add(graph = new WaveGraph()).grow();
 
         buildGroups();
-        buildConfig();
     }
 
+    boolean checkFilters(SpawnGroup group){
+        if(filterType != null && group.type != filterType) return false;
+        if(filterEffects && group.effect == null) return false;
+        if(filterItems && group.items == null) return false;
+        if(filterPayloads && group.payloads == null) return false;
+        return true;
+    }
+
+    /** Rebuild groups chart. Also rebuild config table.*/
     void buildGroups(){
         canvas.clearChildren();
         float marginTop = 4f;
+        int index = 0;
         for(SpawnGroup group : groups){
+            if(group.effect == StatusEffects.none) group.effect = null;
+            if(group.items != null && group.items.amount == 0) group.items = null;
+            if(group.payloads != null && group.payloads.isEmpty()) group.payloads = null;
+
+            if(!checkFilters(group)) continue;
+
+            int index2 = index;
             canvas.addChild(new Table(){
                 boolean dragging;
                 {
@@ -232,7 +289,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     label(() -> String.valueOf(group.begin + 1));
                     add(new Table(t -> {
                         image(group.type.uiIcon).size(32f).scaling(Scaling.fit);
-                        if(group.effect != null && group.effect != StatusEffects.none) image(group.effect.uiIcon).size(32f).scaling(Scaling.fit);
+                        if(group.effect != null) image(group.effect.uiIcon).size(32f).scaling(Scaling.fit);
                         if(group.items != null){
                             var label = new Label(String.valueOf(group.items.amount));
                             label.setAlignment(Align.bottomRight);
@@ -240,7 +297,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                             label.setFontScale(0.7f);
                             stack(new Image(group.items.item.uiIcon).setScaling(Scaling.fit), label).size(32f);
                         }
-                        label(() -> (group.payloads == null || group.payloads.isEmpty() ? "" : Iconc.units + "") + (group.spawn == -1 ? "" : Iconc.blockSpawn + ""));
+                        label(() -> (group.payloads == null || group.payloads.isEmpty() ? "" : Iconc.itchio + "") + (group.spawn == -1 ? "" : Iconc.blockSpawn + ""));
                     }){
                         @Override
                         public float getPrefWidth(){
@@ -253,8 +310,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 @Override
                 public void act(float delta){
                     super.act(delta);
-                    int index = groups.indexOf(group, true);
-                    setPosition(canvas.tileX(group.begin), -canvas.camera.y + canvas.tileH * index + 16f);
+                    //int index = groups.indexOf(group, true);
+                    setPosition(canvas.tileX(group.begin), -canvas.camera.y + canvas.tileH * index2 + 16f);
                     setSize(Mathf.clamp(canvas.tileX(group.end + (group.end == never?0:1)) - canvas.tileX(group.begin), getPrefWidth(), canvas.getWidth()), canvas.tileH - marginTop);
                 }
 
@@ -283,7 +340,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     color.a(1f);
                 }
             });
+
+            index++;
         }
+
+        buildConfig();
     }
 
     void buildConfig(){
@@ -312,7 +373,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 batchEditing(g -> groups.remove(g));
                 selectedGroups.clear();
                 buildGroups();
-                buildConfig();
             }).pad(-6).size(46f).padRight(-12f).tooltip("@waves.remove");
             b.clicked(KeyCode.mouseMiddle, () -> {
                 groups.insert(groups.indexOf(group) + 1, group.copy());
@@ -391,17 +451,15 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
             t.table(a -> {
                 a.button(b -> {
-                    b.image(group.effect != null && group.effect != StatusEffects.none ? group.effect.uiIcon : Icon.none.getRegion()).scaling(Scaling.fit).size(32f);
+                    b.image(group.effect != null ? group.effect.uiIcon : Icon.none.getRegion()).scaling(Scaling.fit).size(32f);
                 }, () -> {
                     showEffects();
                     buildGroups();
-                    buildConfig();
                 });
 
                 a.check("@waves.guardian", b -> {
-                    batchEditing(g -> g.effect = b ? StatusEffects.boss : StatusEffects.none);
+                    batchEditing(g -> g.effect = b ? StatusEffects.boss : null);
                     buildGroups();
-                    buildConfig();
                 }).padTop(4).update(b -> b.setChecked(group.effect == StatusEffects.boss)).padBottom(8f);
             }).width(300f).row();
 
@@ -412,7 +470,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         g.items.item = item;
                     });
                     buildGroups();
-                    buildConfig();
                 }, () -> group.items = null));
 
                 a.field(group.items == null ? "" : String.valueOf(group.items.amount), TextField.TextFieldFilter.digitsOnly, text -> {
@@ -426,7 +483,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             }).width(300f).row();
 
             t.table(a -> {
-                a.button(b -> b.image(group.payloads == null || group.payloads.isEmpty() ? Icon.units.getRegion() : group.payloads.first().uiIcon).scaling(Scaling.fit).size(32f), () -> showPayloads(group)).disabled(b -> batchEditing);
+                a.button(b -> b.image(Icon.itchioSmall).scaling(Scaling.fit).size(32f), () -> showPayloads(group)).disabled(b -> batchEditing);
                 if(group.payloads == null || group.payloads.isEmpty()) return;
                 a.table(ps -> {
                     for(int i = 1; i <= 8 && i <= group.payloads.size; i++){
@@ -492,6 +549,10 @@ public class MFEWaveInfoDialog extends BaseDialog{
         selectedGroups.each(run);
     }
 
+    <T extends UnlockableContent> void showAnyContentsYouWant(Seq<T> seq, String title, Cons<T> setter){
+        showAnyContentsYouWant(seq, title, setter, () -> setter.get(null));
+    }
+
     <T extends UnlockableContent> void showAnyContentsYouWant(Seq<T> seq, String title, Cons<T> setter, @Nullable Runnable noneSetter){
         boolean reset = noneSetter != null;
         BaseDialog dialog = new BaseDialog(title);
@@ -506,7 +567,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     noneSetter.run();
                     dialog.hide();
                     buildGroups();
-                    buildConfig();
                 }).margin(12f);
             }
             int i = reset ? 1 : 0;
@@ -519,7 +579,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     setter.get(type);
                     dialog.hide();
                     buildGroups();
-                    buildConfig();
                 }).margin(12f);
                 if(++i % 3 == 0) p.row();
             }
@@ -529,7 +588,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
     }
 
     void showEffects(){
-        showAnyContentsYouWant(content.statusEffects().copy().removeAll(effect -> effect.reactive), "", effect -> batchEditing(g -> g.effect = effect), () -> batchEditing(g -> g.effect = StatusEffects.none));
+        showAnyContentsYouWant(content.statusEffects().copy().removeAll(effect -> effect.reactive), "", effect -> batchEditing(g -> g.effect = effect));
     }
 
     void showPayloads(SpawnGroup group){
@@ -538,7 +597,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
             {
                 addCloseButton();
                 hidden(() -> {
-                    buildConfig();
                     buildGroups();
                 });
                 cont.pane(p -> {
@@ -570,7 +628,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 pane.defaults().pad(2).fillX();
 
                 if(group.payloads == null || group.payloads.isEmpty()){
-                    pane.add("@waves.empty");
+                    pane.add("@waves.none");
                     return;
                 }
 
@@ -697,6 +755,10 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 clipEnd();
             }
             resetTransform();
+        }
+
+        public void locateWave(int wave){
+            camera.x = Mathf.maxZero(canvas.tileW * wave - canvas.getWidth() / 2f);
         }
     }
 }
