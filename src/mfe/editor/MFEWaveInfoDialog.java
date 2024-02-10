@@ -45,6 +45,9 @@ public class MFEWaveInfoDialog extends BaseDialog{
     boolean showViewSettings;
     @Nullable UnitType filterType;
     boolean filterPayloads, filterItems, filterEffects;
+    Sort sort = Sort.begin;
+    boolean reverseSort = false;
+
     public MFEWaveInfoDialog(){
         super("@waves.title");
 
@@ -139,7 +142,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     shell.pane(t -> {
                         t.background(Tex.button);
                         t.margin(16f);
-                        t.add("Filters").height(40f).grow().row();
+                        t.add("@waveinfo.filters").height(40f).grow().row();
                         t.table(gf -> {
                             gf.defaults().size(40f).pad(4f);
 
@@ -166,7 +169,27 @@ public class MFEWaveInfoDialog extends BaseDialog{
                                 buildGroups();
                                 canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
                             });
-                        });
+                        }).row();
+
+                        t.add("@waveinfo.sorters").height(40f).grow().row();
+
+                        t.table(st -> {
+                            st.defaults().pad(4f);
+                            st.table(Tex.button, f -> {
+                                for(Sort s : Sort.all){
+                                    f.button("@waves.sort." + s, Styles.flatTogglet, () -> {
+                                        sort = s;
+                                        buildGroups();
+                                        canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                                    }).size(80, 40f).checked(b -> s == sort);
+                                }
+                            }).row();
+                            st.check("@waves.sort.reverse", b -> {
+                                reverseSort = b;
+                                buildGroups();
+                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                            }).height(40f).checked(reverseSort);
+                        }).row();
                     });
                 }).right().bottom()
             ).grow().margin(16f);
@@ -221,128 +244,133 @@ public class MFEWaveInfoDialog extends BaseDialog{
         canvas.clearChildren();
         float marginTop = 4f;
         int index = 0;
-        for(SpawnGroup group : groups){
-            if(group.effect == StatusEffects.none) group.effect = null;
-            if(group.items != null && group.items.amount == 0) group.items = null;
-            if(group.payloads != null && group.payloads.isEmpty()) group.payloads = null;
 
-            if(!checkFilters(group)) continue;
+        if(groups != null){
+            groups.sort(Structs.comps(Structs.comparingFloat(sort.sort), Structs.comparingFloat(sort.secondary)));
+            if(reverseSort) groups.reverse();
 
-            int index2 = index;
-            canvas.addChild(new Table(){
-                boolean dragging;
-                {
-                    margin(2f);
-                    background(Tex.whiteui);
-                    touchable = Touchable.enabled;
-                    clicked(() -> {
-                        if(!batchEditing){
-                            if(!selectedGroups.remove(group)) selectedGroups.clear().add(group);
-                        }else{
-                            if(!selectedGroups.remove(group)) selectedGroups.add(group);
-                        }
-                        buildConfig();
-                    });
-                    setColor(color(group.type));
+            for(SpawnGroup group : groups){
+                if(group.effect == StatusEffects.none) group.effect = null;
 
-                    this.addListener(new InputListener(){
-                        long time;
-                        float downx;
-                        @Override
-                        public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-                            time = Time.millis();
-                            downx = x;
-                            return true;
-                        }
+                if(!checkFilters(group)) continue;
 
-                        @Override
-                        public void touchDragged(InputEvent event, float x, float y, int pointer){
-                            if(Time.millis() > time + 1500){
-                                dragging = true;
-                                canvas.cancelDragging = true;
-                                selectedGroups.remove(group, true);
-                                buildConfig();
-                                setTranslation(x - downx + translation.x, translation.y);
+                int index2 = index;
+                canvas.addChild(new Table(){
+                    boolean dragging;
+                    {
+                        margin(2f);
+                        background(Tex.whiteui);
+                        touchable = Touchable.enabled;
+                        clicked(() -> {
+                            if(!batchEditing){
+                                if(!selectedGroups.remove(group)) selectedGroups.clear().add(group);
+                            }else{
+                                if(!selectedGroups.remove(group)) selectedGroups.add(group);
                             }
-                            super.touchDragged(event, x, y, pointer);
-                        }
+                            buildConfig();
+                        });
+                        setColor(color(group.type));
 
-                        @Override
-                        public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
-                            super.touchUp(event, x, y, pointer, button);
-                            if(Time.millis() > time + 1500){
-                                int gap = group.end - group.begin;
-                                float dx = x - downx + translation.x;
-                                if(Math.abs(dx) > canvas.tileW){
-                                    group.begin += Mathf.round(dx / canvas.tileW);
-                                    group.end += Mathf.round(dx / canvas.tileW);
+                        this.addListener(new InputListener(){
+                            long time;
+                            float downx;
+                            @Override
+                            public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
+                                time = Time.millis();
+                                downx = x;
+                                return true;
+                            }
+
+                            @Override
+                            public void touchDragged(InputEvent event, float x, float y, int pointer){
+                                if(Time.millis() > time + 500){
+                                    dragging = true;
+                                    Core.scene.cancelTouchFocus(canvas);
+                                    selectedGroups.remove(group, true);
+                                    buildConfig();
+                                    setTranslation(x - downx + translation.x, translation.y);
                                 }
-
-                                group.begin = Math.max(group.begin, 0);
-                                group.end = Math.max(group.end, gap);
-                                setTranslation(0f, 0f);
-                                dragging = false;
+                                super.touchDragged(event, x, y, pointer);
                             }
-                        }
-                    });
 
-                    label(() -> String.valueOf(group.begin + 1));
-                    add(new Table(t -> {
-                        image(group.type.uiIcon).size(32f).scaling(Scaling.fit);
-                        if(group.effect != null) image(group.effect.uiIcon).size(32f).scaling(Scaling.fit);
-                        if(group.items != null){
-                            var label = new Label(String.valueOf(group.items.amount));
-                            label.setAlignment(Align.bottomRight);
-                            label.setFillParent(true);
-                            label.setFontScale(0.7f);
-                            stack(new Image(group.items.item.uiIcon).setScaling(Scaling.fit), label).size(32f);
-                        }
-                        label(() -> (group.payloads == null || group.payloads.isEmpty() ? "" : Iconc.itchio + "") + (group.spawn == -1 ? "" : Iconc.blockSpawn + ""));
-                    }){
-                        @Override
-                        public float getPrefWidth(){
-                            return 1f;
-                        }
-                    }).grow();
-                    label(() -> group.end == SpawnGroup.never ? "∞" : String.valueOf(group.end + 1));
-                }
+                            @Override
+                            public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
+                                super.touchUp(event, x, y, pointer, button);
+                                if(Time.millis() > time + 500){
+                                    int gap = group.end - group.begin;
+                                    float dx = x - downx + translation.x;
+                                    if(Math.abs(dx) > canvas.tileW){
+                                        group.begin += Mathf.round(dx / canvas.tileW);
+                                        if(group.end != never) group.end += Mathf.round(dx / canvas.tileW);
+                                    }
 
-                @Override
-                public void act(float delta){
-                    super.act(delta);
-                    //int index = groups.indexOf(group, true);
-                    setPosition(canvas.tileX(group.begin), -canvas.camera.y + canvas.tileH * index2 + 16f);
-                    setSize(Mathf.clamp(canvas.tileX(group.end + (group.end == never?0:1)) - canvas.tileX(group.begin), getPrefWidth(), canvas.getWidth()), canvas.tileH - marginTop);
-                }
+                                    group.begin = Math.max(group.begin, 0);
+                                    group.end = Math.max(group.end, gap);
+                                    setTranslation(0f, 0f);
+                                    dragging = false;
+                                }
+                            }
+                        });
 
-                @Override
-                protected void drawBackground(float x, float y){
-                    boolean selected = selectedGroups.contains(group, true);
-                    Tmp.c2.set(color);
-                    color.set(Color.white).a(selected ? 1f : 0.3f);
-                    super.drawBackground(x, y);
-                    color.set(Tmp.c2);
-
-                    //spacing block
-                    Draw.color(selected ? Pal.accent : dragging ? Color.royal : color);
-                    Draw.alpha(0.6f * parentAlpha);
-                    Fill.rect(Tmp.r1.set(canvas.tileX(group.begin), y, canvas.tileX(group.end) + canvas.tileW - canvas.tileX(group.begin), canvas.tileH - marginTop));
-
-                    //spawning block
-                    int start = canvas.getStartWave();
-                    int end = canvas.getEndWave();
-                    Draw.alpha(this.parentAlpha);
-                    for(int i = group.begin; i <= group.end && i <=end; i += group.spacing){
-                        if(i < start) continue;
-                        Fill.rect(Tmp.r1.set(canvas.tileX(i), y, canvas.tileX(i + 1) - canvas.tileX(i), canvas.tileH - marginTop));
+                        label(() -> String.valueOf(group.begin + 1));
+                        add(new Table(t -> {
+                            image(group.type.uiIcon).size(32f).scaling(Scaling.fit);
+                            if(group.effect != null) image(group.effect.uiIcon).size(32f).scaling(Scaling.fit);
+                            if(group.items != null){
+                                var label = new Label(String.valueOf(group.items.amount));
+                                label.setAlignment(Align.bottomRight);
+                                label.setFillParent(true);
+                                label.setFontScale(0.7f);
+                                stack(new Image(group.items.item.uiIcon).setScaling(Scaling.fit), label).size(32f);
+                            }
+                            label(() -> (group.payloads == null || group.payloads.isEmpty() ? "" : Iconc.itchio + "") + (group.spawn == -1 ? "" : Iconc.blockSpawn + ""));
+                        }){
+                            @Override
+                            public float getPrefWidth(){
+                                return 1f;
+                            }
+                        }).grow();
+                        label(() -> group.end == SpawnGroup.never ? "∞" : String.valueOf(group.end + 1));
                     }
-                    Draw.reset();
-                    color.a(1f);
-                }
-            });
 
-            index++;
+                    @Override
+                    public void act(float delta){
+                        super.act(delta);
+                        //int index = groups.indexOf(group, true);
+                        setPosition(canvas.tileX(group.begin), -canvas.camera.y + canvas.tileH * index2 + 16f);
+                        setSize(Mathf.clamp(canvas.tileX(group.end + (group.end == never?0:1)) - canvas.tileX(group.begin), getPrefWidth(), canvas.getWidth()), canvas.tileH - marginTop);
+                    }
+
+                    @Override
+                    protected void drawBackground(float x, float y){
+                        boolean selected = selectedGroups.contains(group, true);
+                        Tmp.c2.set(color);
+                        color.set(Color.white).a(selected ? 1f : 0.3f);
+                        super.drawBackground(x, y);
+                        color.set(Tmp.c2);
+
+                        //spacing block
+                        Draw.color(selected ? Pal.accent : dragging ? Color.royal : color);
+                        Draw.alpha(0.6f * parentAlpha);
+                        Fill.rect(Tmp.r1.set(canvas.tileX(group.begin), y, canvas.tileX(group.end) + canvas.tileW - canvas.tileX(group.begin), canvas.tileH - marginTop));
+
+                        //spawning block
+                        int start = canvas.getStartWave();
+                        int end = canvas.getEndWave();
+                        Draw.alpha(this.parentAlpha);
+                        for(int i = group.begin; i <= group.end && i <=end; i += group.spacing){
+                            if(i < start) continue;
+                            Fill.rect(Tmp.r1.set(canvas.tileX(i), y, canvas.tileX(i + 1) - canvas.tileX(i), canvas.tileH - marginTop));
+                        }
+                        Draw.reset();
+                        color.a(1f);
+                    }
+                });
+
+                index++;
+            }
         }
+
 
         buildConfig();
     }
@@ -668,27 +696,27 @@ public class MFEWaveInfoDialog extends BaseDialog{
         Vec2 vec = new Vec2(), sv = new Vec2();
         /** camera position left bottom. */
         public Vec2 camera = new Vec2();
-        public boolean cancelDragging;
         public WaveCanvas(){
             this.setTransform(true);
             this.setCullingArea(new Rect());
             tileH = 50f;
             tileW = 50f;
 
+            hovered(() -> Core.scene.setScrollFocus(this));
+
             addListener(new InputListener(){
                 float lx, ly;
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-                    cancelDragging = false;
                     sv.setZero();
                     vec.setZero();
                     lx = x;
                     ly = y;
                     return true;
                 }
+
                 @Override
                 public void touchDragged(InputEvent event, float x, float y, int pointer){
-                    if(cancelDragging) return;
                     sv.sub(x - lx, y - ly);
                     camera.sub(x - lx, y - ly);
                     lx = x;
@@ -698,6 +726,12 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 @Override
                 public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
                     vec.set(sv);
+                }
+
+                @Override
+                public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY){
+                    scroll(amountY * 100f * (1f + Math.abs(x / getWidth() - 0.5f) * 8f));
+                    return super.scrolled(event, x, y, amountX, amountY);
                 }
             });
         }
@@ -759,6 +793,29 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
         public void locateWave(int wave){
             camera.x = Mathf.maxZero(canvas.tileW * wave - canvas.getWidth() / 2f);
+        }
+
+        public void scroll(float amount){
+            camera.x += amount;
+        }
+    }
+
+    enum Sort{
+        begin(g -> g.begin, g -> g.type.id),
+        end(g -> g.end, g -> g.type.id),
+        type(g -> g.type.id);
+
+        static final MFEWaveInfoDialog.Sort[] all = values();
+
+        final Floatf<SpawnGroup> sort, secondary;
+
+        Sort(Floatf<SpawnGroup> sort){
+            this(sort, g -> g.begin);
+        }
+
+        Sort(Floatf<SpawnGroup> sort, Floatf<SpawnGroup> secondary){
+            this.sort = sort;
+            this.secondary = secondary;
         }
     }
 }
