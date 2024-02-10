@@ -7,7 +7,6 @@ import arc.graphics.g2d.*;
 import arc.input.*;
 import arc.math.*;
 import arc.math.geom.*;
-import arc.scene.actions.*;
 import arc.scene.event.*;
 import arc.scene.style.*;
 import arc.scene.ui.*;
@@ -27,7 +26,7 @@ import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 
 import static mindustry.Vars.*;
-import static mindustry.game.SpawnGroup.never;
+import static mindustry.game.SpawnGroup.*;
 
 public class MFEWaveInfoDialog extends BaseDialog{
     public static MFEWaveInfoDialog mfewave = new MFEWaveInfoDialog();
@@ -43,7 +42,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
 
     boolean showViewSettings;
-    @Nullable UnitType filterType;
+    @Nullable
+    UnitType filterType;
     boolean filterPayloads, filterItems, filterEffects;
     Sort sort = Sort.begin;
     boolean reverseSort = false;
@@ -114,6 +114,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             }).width(200f);
         }
     }
+
     void setup(){
         groups = JsonIO.copy(state.rules.spawns.isEmpty() ? waves.get() : state.rules.spawns);
         if(groups == null) groups = new Seq<>();
@@ -239,7 +240,9 @@ public class MFEWaveInfoDialog extends BaseDialog{
         return true;
     }
 
-    /** Rebuild groups chart. Also rebuild config table.*/
+    /**
+     * Rebuild groups chart. Also rebuild config table.
+     */
     void buildGroups(){
         canvas.clearChildren();
         float marginTop = 4f;
@@ -257,6 +260,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 int index2 = index;
                 canvas.addChild(new Table(){
                     boolean dragging;
+
                     {
                         margin(2f);
                         background(Tex.whiteui);
@@ -274,6 +278,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         this.addListener(new InputListener(){
                             long time;
                             float downx;
+
                             @Override
                             public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
                                 time = Time.millis();
@@ -338,7 +343,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         super.act(delta);
                         //int index = groups.indexOf(group, true);
                         setPosition(canvas.tileX(group.begin), -canvas.camera.y + canvas.tileH * index2 + 16f);
-                        setSize(Mathf.clamp(canvas.tileX(group.end + (group.end == never?0:1)) - canvas.tileX(group.begin), getPrefWidth(), canvas.getWidth()), canvas.tileH - marginTop);
+                        setSize(Mathf.clamp(canvas.tileX(group.end + (group.end == never ? 0 : 1)) - canvas.tileX(group.begin), getPrefWidth(), canvas.getWidth()), canvas.tileH - marginTop);
                     }
 
                     @Override
@@ -358,7 +363,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         int start = canvas.getStartWave();
                         int end = canvas.getEndWave();
                         Draw.alpha(this.parentAlpha);
-                        for(int i = group.begin; i <= group.end && i <=end; i += group.spacing){
+                        for(int i = group.begin; i <= group.end && i <= end; i += group.spacing){
                             if(i < start) continue;
                             Fill.rect(Tmp.r1.set(canvas.tileX(i), y, canvas.tileX(i + 1) - canvas.tileX(i), canvas.tileH - marginTop));
                         }
@@ -622,6 +627,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
     void showPayloads(SpawnGroup group){
         BaseDialog dialog = new BaseDialog(""){
             Table pane;
+
             {
                 addCloseButton();
                 hidden(() -> {
@@ -694,8 +700,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
     public class WaveCanvas extends WidgetGroup{
         float tileH, tileW;
         Vec2 vec = new Vec2(), sv = new Vec2();
-        /** camera position left bottom. */
+        /**
+         * camera position left bottom.
+         */
         public Vec2 camera = new Vec2();
+
         public WaveCanvas(){
             this.setTransform(true);
             this.setCullingArea(new Rect());
@@ -706,6 +715,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
             addListener(new InputListener(){
                 float lx, ly;
+
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
                     sv.setZero();
@@ -773,7 +783,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 float dx = cx + this.x;
                 float dy = this.y;
                 Lines.dashLine(dx, dy + 16, dx, dy + getHeight(), 60);
-                if(Mathf.mod(i, gap) == 0) font.draw(String.valueOf(i + 1), dx + tileW/2f, dy + 12, Align.center);
+                if(Mathf.mod(i, gap) == 0) font.draw(String.valueOf(i + 1), dx + tileW / 2f, dy + 12, Align.center);
                 if(search == i){
                     Fill.rect(Tmp.r1.set(dx, dy, tileW, getHeight()));
                 }
