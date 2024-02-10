@@ -7,6 +7,7 @@ import arc.graphics.g2d.*;
 import arc.input.*;
 import arc.math.*;
 import arc.math.geom.*;
+import arc.scene.*;
 import arc.scene.event.*;
 import arc.scene.style.*;
 import arc.scene.ui.*;
@@ -40,7 +41,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
     boolean batchEditing;
     boolean checkedSpawns;
 
-
     boolean showViewSettings;
     @Nullable
     UnitType filterType;
@@ -50,7 +50,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
     public MFEWaveInfoDialog(){
         super("@waves.title");
-
         shown(this::setup);
         hidden(() -> {
             if(state.isEditor() || state.isMenu()){
@@ -214,17 +213,27 @@ public class MFEWaveInfoDialog extends BaseDialog{
             });
             tools.add().growX().minWidth(0f);
 
+            tools.button("<", () -> {}).update(t -> {
+                if(t.getClickListener().isPressed()){
+                    canvas.scroll(-20);
+                }
+            }).width(60f);
+            tools.button(">", () -> {}).update(t -> {
+                if(t.getClickListener().isPressed()){
+                    canvas.scroll(20);
+                }
+            }).width(60f);
             tools.button("-", () -> {}).update(t -> {
                 if(t.getClickListener().isPressed()){
-                    scaleX(-1);
+                    canvas.scaleX(-1);
                 }
             }).width(60f);
             tools.button("+", () -> {}).update(t -> {
                 if(t.getClickListener().isPressed()){
-                    scaleX(1);
+                    canvas.scaleX(1);
                 }
             }).width(60f);
-            tools.button(Icon.filter, () -> showViewSettings = !showViewSettings).checked(showViewSettings).width(60f);
+            tools.button(Icon.filter, Styles.clearTogglei, () -> showViewSettings = !showViewSettings).checked(showViewSettings).width(60f).padLeft(8f);
         }).growX();
 
         //cont.add(graph = new WaveGraph()).grow();
@@ -260,7 +269,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 int index2 = index;
                 canvas.addChild(new Table(){
                     boolean dragging;
-
                     {
                         margin(2f);
                         background(Tex.whiteui);
@@ -276,44 +284,38 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         setColor(color(group.type));
 
                         this.addListener(new InputListener(){
-                            long time;
                             float downx;
 
                             @Override
                             public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-                                time = Time.millis();
                                 downx = x;
                                 return true;
                             }
 
                             @Override
                             public void touchDragged(InputEvent event, float x, float y, int pointer){
-                                if(Time.millis() > time + 500){
-                                    dragging = true;
-                                    Core.scene.cancelTouchFocus(canvas);
-                                    selectedGroups.remove(group, true);
-                                    buildConfig();
-                                    setTranslation(x - downx + translation.x, translation.y);
-                                }
+                                dragging = true;
+                                Core.scene.cancelTouchFocus(canvas);
+                                selectedGroups.remove(group, true);
+                                buildConfig();
+                                setTranslation(x - downx + translation.x, translation.y);
                                 super.touchDragged(event, x, y, pointer);
                             }
 
                             @Override
                             public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
                                 super.touchUp(event, x, y, pointer, button);
-                                if(Time.millis() > time + 500){
-                                    int gap = group.end - group.begin;
-                                    float dx = x - downx + translation.x;
-                                    if(Math.abs(dx) > canvas.tileW){
-                                        group.begin += Mathf.round(dx / canvas.tileW);
-                                        if(group.end != never) group.end += Mathf.round(dx / canvas.tileW);
-                                    }
-
-                                    group.begin = Math.max(group.begin, 0);
-                                    group.end = Math.max(group.end, gap);
-                                    setTranslation(0f, 0f);
-                                    dragging = false;
+                                int gap = group.end - group.begin;
+                                float dx = x - downx + translation.x;
+                                if(Math.abs(dx) > canvas.tileW){
+                                    group.begin += Mathf.round(dx / canvas.tileW);
+                                    if(group.end != never) group.end += Mathf.round(dx / canvas.tileW);
                                 }
+
+                                group.begin = Math.max(group.begin, 0);
+                                group.end = Math.max(group.end, gap);
+                                setTranslation(0f, 0f);
+                                dragging = false;
                             }
                         });
 
@@ -685,19 +687,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
         dialog.show();
     }
 
-    void scaleX(int amount){
-        updateTimer += Time.delta;
-        if(updateTimer >= updatePeriod){
-            canvas.tileW += amount;
-            updateTimer = 0f;
-        }
-    }
-
     Color color(UnitType type){
         return Tmp.c1.fromHsv(type.id / (float)Vars.content.units().size * 360f, 0.7f, 0.8f).a(1f);
     }
 
-    public class WaveCanvas extends WidgetGroup{
+    public class WaveCanvas extends WidgetGroup implements GestureDetector.GestureListener{
         float tileH, tileW;
         Vec2 vec = new Vec2(), sv = new Vec2();
         /**
@@ -713,15 +707,16 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
             hovered(() -> Core.scene.setScrollFocus(this));
 
-            addListener(new InputListener(){
+            addCaptureListener(new InputListener(){
                 float lx, ly;
-
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
+                    if(button != KeyCode.mouseRight) return false;  //stop dragging and up
                     sv.setZero();
                     vec.setZero();
                     lx = x;
                     ly = y;
+                    event.stop();   //prevent children to receive it.
                     return true;
                 }
 
@@ -753,7 +748,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             camera.add(vec.x, vec.y);
             sv.scl(0.5f);
             vec.scl(0.9f);
-            camera.lerpDelta(Math.max(camera.x, -20f), Mathf.clamp(camera.y, -20f, tileH * (groups.size + 1) - getHeight() + 20f), 0.1f);
+            camera.lerpDelta(Math.max(camera.x, -180f), Mathf.clamp(camera.y, -60f, tileH * (groups.size + 1) - getHeight() + 20f), 0.1f);
         }
 
         public int getStartWave(){
@@ -777,12 +772,14 @@ public class MFEWaveInfoDialog extends BaseDialog{
             Draw.color(Color.gray, 0.3f);
             Font font = Fonts.outline;
             font.setColor(Color.gray);
+            float y1 = this.y + Math.max(16, -camera.y);
+            float y2 = this.y + Math.min(getHeight(), getChildren().max(Element::getTop).getTop());
             for(int i = start / gap * gap; i < end; i += 1){
                 float cx = -camera.x + i * tileW;
                 if(cx < 0) continue;
                 float dx = cx + this.x;
                 float dy = this.y;
-                Lines.dashLine(dx, dy + 16, dx, dy + getHeight(), 60);
+                Lines.dashLine(dx, y1, dx, y2, 60);
                 if(Mathf.mod(i, gap) == 0) font.draw(String.valueOf(i + 1), dx + tileW / 2f, dy + 12, Align.center);
                 if(search == i){
                     Fill.rect(Tmp.r1.set(dx, dy, tileW, getHeight()));
@@ -807,6 +804,10 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
         public void scroll(float amount){
             camera.x += amount;
+        }
+
+        void scaleX(int amount){
+            tileW += amount;
         }
     }
 
