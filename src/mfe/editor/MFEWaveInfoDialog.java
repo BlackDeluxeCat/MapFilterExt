@@ -33,12 +33,13 @@ public class MFEWaveInfoDialog extends BaseDialog{
     public static MFEWaveInfoDialog mfewave = new MFEWaveInfoDialog();
     Seq<SpawnGroup> groups = new Seq<>();
     Seq<SpawnGroup> selectedGroups = new Seq<>();
-    WaveGraph graph = new WaveGraph();
     WaveCanvas canvas = new WaveCanvas();
     Table config;
     int search = -1;
     boolean batchEditing;
     boolean checkedSpawns;
+    @Nullable
+    SpawnGroup currentDragging;
 
     boolean showViewSettings;
     @Nullable
@@ -130,7 +131,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     setWrap(true);
                     setAlignment(Align.center, Align.center);
                 }}, new Table(shell -> {
-                    shell.visible(() -> !selectedGroups.isEmpty());
+                    shell.visible(() -> !selectedGroups.isEmpty() && currentDragging == null);
                     shell.pane(t -> {
                         config = t;
                         t.background(Tex.button);
@@ -268,7 +269,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                 int index2 = index;
                 canvas.addChild(new Table(){
-                    boolean dragging;
                     {
                         margin(2f);
                         background(Tex.whiteui);
@@ -285,18 +285,16 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                         this.addListener(new InputListener(){
                             float downx;
-
                             @Override
                             public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
+                                currentDragging = group;
                                 downx = x;
                                 return true;
                             }
 
                             @Override
                             public void touchDragged(InputEvent event, float x, float y, int pointer){
-                                dragging = true;
                                 Core.scene.cancelTouchFocus(canvas);
-                                selectedGroups.remove(group, true);
                                 buildConfig();
                                 setTranslation(x - downx + translation.x, translation.y);
                                 super.touchDragged(event, x, y, pointer);
@@ -315,7 +313,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                                 group.begin = Math.max(group.begin, 0);
                                 group.end = Math.max(group.end, gap);
                                 setTranslation(0f, 0f);
-                                dragging = false;
+                                currentDragging = null;
                             }
                         });
 
@@ -357,7 +355,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         color.set(Tmp.c2);
 
                         //spacing block
-                        Draw.color(selected ? Pal.accent : dragging ? Color.royal : color);
+                        Draw.color(selected ? Pal.accent : currentDragging == group ? Color.royal : color);
                         Draw.alpha(0.6f * parentAlpha);
                         Fill.rect(Tmp.r1.set(canvas.tileX(group.begin), y, canvas.tileX(group.end) + canvas.tileW - canvas.tileX(group.begin), canvas.tileH - marginTop));
 
@@ -765,6 +763,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
         @Override
         public void draw(){
+            //draw axis
             int start = getStartWave();
             int end = getEndWave();
             int gap = Mathf.ceil(100f / tileW);
