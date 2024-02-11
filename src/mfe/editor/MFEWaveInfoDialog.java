@@ -37,7 +37,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
     WaveCanvas canvas = new WaveCanvas();
     Table config;
     int search = -1;
-    float updateTimer, updatePeriod = 1f;
     boolean batchEditing;
     boolean checkedSpawns;
 
@@ -45,7 +44,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
     @Nullable
     UnitType filterType;
     boolean filterPayloads, filterItems, filterEffects;
-    Sort sort = Sort.begin;
     boolean reverseSort = false;
 
     public MFEWaveInfoDialog(){
@@ -177,11 +175,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
                             st.defaults().pad(4f);
                             st.table(Tex.button, f -> {
                                 for(Sort s : Sort.all){
-                                    f.button("@waves.sort." + s, Styles.flatTogglet, () -> {
-                                        sort = s;
+                                    f.button("@waves.sort." + s, Styles.flatt, () -> {
+                                        sort(s);
                                         buildGroups();
                                         canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
-                                    }).size(80, 40f).checked(b -> s == sort);
+                                    }).size(80, 40f);
                                 }
                             }).row();
                             st.check("@waves.sort.reverse", b -> {
@@ -249,6 +247,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
         return true;
     }
 
+    void sort(Sort sort){
+        groups.sort(Structs.comps(Structs.comparingFloat(sort.sort), Structs.comparingFloat(sort.secondary)));
+        if(reverseSort) groups.reverse();
+    }
+
     /**
      * Rebuild groups chart. Also rebuild config table.
      */
@@ -258,9 +261,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
         int index = 0;
 
         if(groups != null){
-            groups.sort(Structs.comps(Structs.comparingFloat(sort.sort), Structs.comparingFloat(sort.secondary)));
-            if(reverseSort) groups.reverse();
-
             for(SpawnGroup group : groups){
                 if(group.effect == StatusEffects.none) group.effect = null;
 
