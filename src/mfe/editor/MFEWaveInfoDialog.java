@@ -41,9 +41,9 @@ public class MFEWaveInfoDialog extends BaseDialog{
     SpawnGroup currentDragging;
 
     boolean showViewSettings;
-    @Nullable
-    UnitType filterType;
     boolean filterPayloads, filterItems, filterEffects;
+    @Nullable UnitType filterType;
+    int filterSpawn = -1;
     boolean reverseSort = false;
 
     public MFEWaveInfoDialog(){
@@ -121,6 +121,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
         checkedSpawns = false;
         batchEditing = false;
         selectedGroups.clear();
+        filterSpawn = -1;
 
         cont.clear();
 
@@ -143,15 +144,10 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     shell.pane(t -> {
                         t.background(Tex.button);
                         t.margin(16f);
-                        t.add("@waveinfo.filters").height(40f).grow().row();
+                        t.add("@waveinfo.a").height(40f).grow().row();
+                        //boolean filters
                         t.table(gf -> {
                             gf.defaults().size(40f).pad(4f);
-
-                            gf.button(Icon.units, Styles.squarei, () -> showAnyContentsYouWant(groups.map(sg -> sg.type).asSet().toSeq().sort(type -> type.id), "", type -> {
-                                filterType = type;
-                                buildGroups();
-                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
-                            })).update(b -> b.getStyle().imageUp = filterType != null ? new TextureRegionDrawable(filterType.uiIcon) : Icon.units);
 
                             gf.button(Icon.effect, Styles.squareTogglei, () -> {
                                 filterEffects = !filterEffects;
@@ -170,6 +166,25 @@ public class MFEWaveInfoDialog extends BaseDialog{
                                 buildGroups();
                                 canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
                             });
+                        }).row();
+                        //type filters
+                        t.table(gf -> {
+                            gf.defaults().height(40f).pad(4f);
+
+                            gf.button(Icon.units, Styles.squarei, () -> showAnyContentsYouWant(groups.map(sg -> sg.type).asSet().toSeq().sort(type -> type.id), "", type -> {
+                                filterType = type;
+                                buildGroups();
+                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                            })).width(40f).update(b -> b.getStyle().imageUp = filterType != null ? new TextureRegionDrawable(filterType.uiIcon) : Icon.units);
+
+                            gf.button("", () -> {
+                                if(!checkedSpawns){
+                                    //recalculate waves when changed
+                                    Vars.spawner.reset();
+                                    checkedSpawns = true;
+                                }
+                                showSpawns(i -> batchEditing(g -> g.spawn = i), () -> filterSpawn);
+                            }).width(160f).get().getLabel().setText(() -> filterSpawn == -1 ? "@waves.spawn.all" : Point2.x(filterSpawn) + ", " + Point2.y(filterSpawn));
                         }).row();
 
                         t.add("@waveinfo.sorters").height(40f).grow().row();
@@ -247,6 +262,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
         if(filterEffects && group.effect == null) return false;
         if(filterItems && group.items == null) return false;
         if(filterPayloads && group.payloads == null) return false;
+        if(filterSpawn != -1 && group.spawn != filterSpawn) return false;
         return true;
     }
 
@@ -547,45 +563,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         Vars.spawner.reset();
                         checkedSpawns = true;
                     }
-
-                    BaseDialog dialog = new BaseDialog("@waves.spawn.select");
-                    dialog.cont.pane(p -> {
-                        p.background(Tex.button).margin(10f);
-                        int i = 0;
-                        int cols = 4;
-                        int max = 20;
-
-                        if(spawner.getSpawns().size >= max){
-                            p.add("[lightgray](first " + max + ")").colspan(cols).padBottom(4).row();
-                        }
-
-                        for(var spawn : spawner.getSpawns()){
-                            p.button(spawn.x + ", " + spawn.y, Styles.flatTogglet, () -> {
-                                batchEditing(g -> g.spawn = spawn.pos());
-                                dialog.hide();
-                            }).size(110f, 45f).checked(spawn.pos() == group.spawn);
-                            if(++i % cols == 0){
-                                p.row();
-                            }
-
-                            //only display first 20 spawns, you don't need to see more.
-                            if(i >= 20){
-                                break;
-                            }
-                        }
-
-                        if(spawner.getSpawns().isEmpty()){
-                            p.add("@waves.spawn.none");
-                        }else{
-                            p.button("@waves.spawn.all", Styles.flatTogglet, () -> {
-                                batchEditing(g -> g.spawn = -1);
-                                dialog.hide();
-                            }).size(110f, 45f).checked(-1 == group.spawn);
-                        }
-                    }).grow();
-                    dialog.setFillParent(false);
-                    dialog.addCloseButton();
-                    dialog.show();
+                    showSpawns(i -> batchEditing(g -> g.spawn = i), () -> group.spawn);
                 }).width(160f).height(36f).get().getLabel().setText(() -> group.spawn == -1 ? "@waves.spawn.all" : Point2.x(group.spawn) + ", " + Point2.y(group.spawn));
             }).padBottom(8f).row();
         }).width(300f).row();
@@ -637,15 +615,54 @@ public class MFEWaveInfoDialog extends BaseDialog{
         showAnyContentsYouWant(content.statusEffects().copy().removeAll(effect -> effect.reactive), "", effect -> batchEditing(g -> g.effect = effect));
     }
 
+    void showSpawns(Intc setter, Intp getter){
+        BaseDialog dialog = new BaseDialog("@waves.spawn.select");
+        dialog.cont.pane(p -> {
+            p.background(Tex.button).margin(10f);
+            int i = 0;
+            int cols = 4;
+            int max = 20;
+
+            if(spawner.getSpawns().size >= max){
+                p.add("[lightgray](first " + max + ")").colspan(cols).padBottom(4).row();
+            }
+
+            for(var spawn : spawner.getSpawns()){
+                p.button(spawn.x + ", " + spawn.y, Styles.flatTogglet, () -> {
+                    setter.get(spawn.pos());
+                    dialog.hide();
+                }).size(110f, 45f).checked(getter.get() == spawn.pos());
+                if(++i % cols == 0){
+                    p.row();
+                }
+
+                //only display first 20 spawns, you don't need to see more.
+                if(i >= 20){
+                    break;
+                }
+            }
+
+            if(spawner.getSpawns().isEmpty()){
+                p.add("@waves.spawn.none");
+            }else{
+                p.button("@waves.spawn.all", Styles.flatTogglet, () -> {
+                    setter.get(-1);
+                    dialog.hide();
+                }).size(110f, 45f).checked(getter.get() == -1);
+            }
+        }).grow();
+        dialog.setFillParent(false);
+        dialog.addCloseButton();
+        dialog.show();
+    }
+
     void showPayloads(SpawnGroup group){
         BaseDialog dialog = new BaseDialog(""){
             Table pane;
             boolean showConfig;
             {
                 addCloseButton();
-
                 buttons.button("@add", Styles.togglet, () -> showConfig = !showConfig);
-
                 hidden(() -> {
                     buildGroups();
                 });
@@ -796,7 +813,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             Font font = Fonts.outline;
             font.setColor(Color.gray);
             float y1 = this.y + Math.max(16, -camera.y);
-            float y2 = this.y + Math.min(getHeight(), getChildren().max(Element::getTop).getTop());
+            float y2 = this.y + Math.min(getHeight(), getChildren() == null || getChildren().isEmpty() ? y1 : getChildren().max(Element::getTop).getTop());
             for(int i = start / gap * gap; i < end; i += 1){
                 float cx = -camera.x + i * tileW;
                 if(cx < 0) continue;
