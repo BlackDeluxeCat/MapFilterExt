@@ -55,7 +55,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             if(state.isEditor() || state.isMenu()){
                 //clean up invalid configs
                 groups.each(g -> {
-                    if(!(g.type instanceof Payloadc)) g.payloads = null;
+                    if(g.type.payloadCapacity == 0) g.payloads = null;
                     if(g.type.itemCapacity == 0) g.items = null;
                 });
                 state.rules.spawns = groups;
@@ -144,7 +144,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     shell.pane(t -> {
                         t.background(Tex.button);
                         t.margin(16f);
-                        t.add("@waveinfo.a").height(40f).grow().row();
+                        t.add("@waveinfo.filters").height(40f).grow().row();
                         //boolean filters
                         t.table(gf -> {
                             gf.defaults().size(40f).pad(4f);
@@ -424,7 +424,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             b.button(Icon.copySmall, Styles.emptyi, () -> {
                 groups.insert(groups.indexOf(group) + 1, group.copy());
                 buildGroups();
-            }).pad(-6).size(46f).tooltip("@editor.copy").disabled(bb -> !batchEditing);
+            }).pad(-6).size(46f).tooltip("@editor.copy").disabled(bb -> batchEditing);
 
             b.button(Icon.unitsSmall, Styles.emptyi, () -> showAnyContentsYouWant(content.units().copy().removeAll(UnitType::isHidden), "", type -> {
                 batchEditing(g -> g.type = type);
