@@ -17,7 +17,6 @@ import arc.util.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.ctype.*;
-import mindustry.editor.*;
 import mindustry.game.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
@@ -49,7 +48,9 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
     public MFEWaveInfoDialog(){
         super("@waves.title");
+
         shown(this::setup);
+
         hidden(() -> {
             if(state.isEditor() || state.isMenu()){
                 //clean up invalid configs
@@ -67,6 +68,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             BaseDialog dialog = new BaseDialog("@waves.edit");
             dialog.addCloseButton();
             dialog.setFillParent(false);
+
             dialog.cont.table(Tex.button, t -> {
                 var style = Styles.cleart;
                 t.defaults().size(280f, 64f).pad(2f);
@@ -131,7 +133,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     setWrap(true);
                     setAlignment(Align.center, Align.center);
                 }}, new Table(shell -> {
-                    shell.visible(() -> !selectedGroups.isEmpty() && currentDragging == null);
+                    shell.visible(() -> !selectedGroups.isEmpty());
                     shell.pane(t -> {
                         config = t;
                         t.background(Tex.button);
@@ -273,6 +275,53 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         margin(2f);
                         background(Tex.whiteui);
                         touchable = Touchable.enabled;
+                        setColor(color(group.type));
+
+                        this.addCaptureListener(new InputListener(){
+                            float downx, downy;
+                            @Override
+                            public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
+                                currentDragging = group;
+                                downx = x;
+                                downy = y;
+                                return true;
+                            }
+
+                            @Override
+                            public void touchDragged(InputEvent event, float x, float y, int pointer){
+                                Core.scene.cancelTouchFocus(canvas);
+                                selectedGroups.clear();
+                                buildConfig();
+                                setTranslation((x - downx) + translation.x, (y - downy) + translation.y);
+                                super.touchDragged(event, x, y, pointer);
+                            }
+
+                            @Override
+                            public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
+                                super.touchUp(event, x, y, pointer, button);
+                                //dragging begin & end
+                                int gap = group.end - group.begin;
+                                float dx = x - downx + translation.x;
+                                if(Math.abs(dx) > canvas.tileW){
+                                    group.begin += Mathf.round(dx / canvas.tileW);
+                                    if(group.end != never) group.end += Mathf.round(dx / canvas.tileW);
+                                }
+                                group.begin = Math.max(group.begin, 0);
+                                group.end = Math.max(group.end, gap);
+                                //dragging up down
+                                float dy = y - downy + translation.y;
+                                if(Math.abs(dy) > canvas.tileH){
+                                    int newIndex = Mathf.clamp(index2 + Mathf.round(dy / canvas.tileH), 0, groups.size - 1);
+                                    groups.remove(group, true);
+                                    groups.insert(newIndex, group);
+                                    buildGroups();
+                                }
+
+                                setTranslation(0f, 0f);
+                                currentDragging = null;
+                            }
+                        });
+
                         clicked(() -> {
                             if(!batchEditing){
                                 if(!selectedGroups.remove(group)) selectedGroups.clear().add(group);
@@ -280,41 +329,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                                 if(!selectedGroups.remove(group)) selectedGroups.add(group);
                             }
                             buildConfig();
-                        });
-                        setColor(color(group.type));
-
-                        this.addListener(new InputListener(){
-                            float downx;
-                            @Override
-                            public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-                                currentDragging = group;
-                                downx = x;
-                                return true;
-                            }
-
-                            @Override
-                            public void touchDragged(InputEvent event, float x, float y, int pointer){
-                                Core.scene.cancelTouchFocus(canvas);
-                                buildConfig();
-                                setTranslation(x - downx + translation.x, translation.y);
-                                super.touchDragged(event, x, y, pointer);
-                            }
-
-                            @Override
-                            public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
-                                super.touchUp(event, x, y, pointer, button);
-                                int gap = group.end - group.begin;
-                                float dx = x - downx + translation.x;
-                                if(Math.abs(dx) > canvas.tileW){
-                                    group.begin += Mathf.round(dx / canvas.tileW);
-                                    if(group.end != never) group.end += Mathf.round(dx / canvas.tileW);
-                                }
-
-                                group.begin = Math.max(group.begin, 0);
-                                group.end = Math.max(group.end, gap);
-                                setTranslation(0f, 0f);
-                                currentDragging = null;
-                            }
                         });
 
                         label(() -> String.valueOf(group.begin + 1));
@@ -341,7 +355,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     @Override
                     public void act(float delta){
                         super.act(delta);
-                        //int index = groups.indexOf(group, true);
                         setPosition(canvas.tileX(group.begin), -canvas.camera.y + canvas.tileH * index2 + 16f);
                         setSize(Mathf.clamp(canvas.tileX(group.end + (group.end == never ? 0 : 1)) - canvas.tileX(group.begin), getPrefWidth(), canvas.getWidth()), canvas.tileH - marginTop);
                     }
@@ -357,7 +370,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         //spacing block
                         Draw.color(selected ? Pal.accent : currentDragging == group ? Color.royal : color);
                         Draw.alpha(0.6f * parentAlpha);
-                        Fill.rect(Tmp.r1.set(canvas.tileX(group.begin), y, canvas.tileX(group.end) + canvas.tileW - canvas.tileX(group.begin), canvas.tileH - marginTop));
+                        Fill.rect(Tmp.r1.set(canvas.tileX(group.begin), y, canvas.tileX(group.end) + canvas.tileW - canvas.tileX(group.begin), canvas.tileH - marginTop).move(0f, -translation.y));
 
                         //spawning block
                         int start = canvas.getStartWave();
@@ -365,7 +378,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         Draw.alpha(this.parentAlpha);
                         for(int i = group.begin; i <= group.end && i <= end; i += group.spacing){
                             if(i < start) continue;
-                            Fill.rect(Tmp.r1.set(canvas.tileX(i), y, canvas.tileX(i + 1) - canvas.tileX(i), canvas.tileH - marginTop));
+                            Fill.rect(Tmp.r1.set(canvas.tileX(i), y, canvas.tileX(i + 1) - canvas.tileX(i), canvas.tileH - marginTop).move(0f, -translation.y));
                         }
                         Draw.reset();
                         color.a(1f);
@@ -519,7 +532,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 a.button(b -> b.image(Icon.itchioSmall).scaling(Scaling.fit).size(32f), () -> showPayloads(group)).disabled(b -> batchEditing);
                 if(group.payloads == null || group.payloads.isEmpty()) return;
                 a.table(ps -> {
-                    for(int i = 1; i <= 8 && i <= group.payloads.size; i++){
+                    for(int i = Math.min(8, group.payloads.size); i > 0; i--){
                         ps.image(group.payloads.get(group.payloads.size - i).uiIcon).size(16f).scaling(Scaling.fit);
                     }
                 });
@@ -627,34 +640,45 @@ public class MFEWaveInfoDialog extends BaseDialog{
     void showPayloads(SpawnGroup group){
         BaseDialog dialog = new BaseDialog(""){
             Table pane;
-
+            boolean showConfig;
             {
                 addCloseButton();
+
+                buttons.button("@add", Styles.togglet, () -> showConfig = !showConfig);
+
                 hidden(() -> {
                     buildGroups();
                 });
-                cont.pane(p -> {
-                    pane = p;
-                    build();
-                }).scrollX(true).height(300f).row();
 
-                cont.pane(p -> {
-                    p.defaults().pad(2).fillX();
-                    int i = 0;
-                    for(var type : content.units()){
-                        p.button(t -> {
-                            t.center();
-                            t.image(type.uiIcon).size(8 * 8).scaling(Scaling.fit).padRight(2f);
-                            t.row();
-                            t.add(type.localizedName);
-                        }, () -> {
-                            if(group.payloads == null) group.payloads = new Seq<>();
-                            group.payloads.add(type);
-                            build();
-                        }).margin(12f).size(144);
-                        if(++i % 8 == 0) p.row();
-                    }
-                }).grow().scrollX(false);
+                cont.stack(new Table(t -> {
+                    t.setFillParent(true);
+                    t.pane(p -> {
+                        pane = p;
+                        build();
+                    }).grow();
+                }), new Table(t -> {
+                    t.setFillParent(true);
+                    t.table(tt -> {
+                        tt.background(Tex.button);
+                        tt.pane(p -> {
+                            p.defaults().pad(2).fillX();
+                            int i = 0;
+                            for(var type : content.units()){
+                                p.button(b -> {
+                                    b.center();
+                                    b.image(type.uiIcon).size(6 * 8).scaling(Scaling.fit).padRight(2f);
+                                    b.row();
+                                    b.add(type.localizedName);
+                                }, () -> {
+                                    if(group.payloads == null) group.payloads = new Seq<>();
+                                    group.payloads.add(type);
+                                    build();
+                                }).margin(12f).size(96);
+                                if(++i % 8 == 0) p.row();
+                            }
+                        });
+                    }).height(300f).visible(() -> showConfig);
+                }).bottom()).grow();
             }
 
             void build(){
