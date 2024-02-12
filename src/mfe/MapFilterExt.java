@@ -13,6 +13,7 @@ import mfe.filters.*;
 import mfe.guides.*;
 import mfe.math.*;
 import mi2.setting.*;
+import mindustry.*;
 import mindustry.editor.*;
 import mindustry.game.EventType.*;
 import mindustry.io.*;
@@ -34,6 +35,11 @@ public class MapFilterExt extends Mod{
 
     public MapFilterExt(){
         Events.on(ClientLoadEvent.class, e -> {
+            var mod = Vars.mods.getMod(this.getClass());
+            if(mod != null){
+                mod.meta.subtitle = mod.meta.version;
+            }
+
             initGuideClassJsonIO();
             config = ConfigHandler.request(this);
             GuideSchematics.load();
