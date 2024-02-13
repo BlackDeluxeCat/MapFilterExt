@@ -14,9 +14,11 @@ import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
+import arc.util.pooling.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.ctype.*;
+import mindustry.editor.*;
 import mindustry.game.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
@@ -28,21 +30,22 @@ import mindustry.ui.dialogs.*;
 import static mindustry.Vars.*;
 import static mindustry.game.SpawnGroup.*;
 
+//TODO mobile dragging conflict
 public class MFEWaveInfoDialog extends BaseDialog{
     public static MFEWaveInfoDialog mfewave = new MFEWaveInfoDialog();
     Seq<SpawnGroup> groups = new Seq<>();
     Seq<SpawnGroup> selectedGroups = new Seq<>();
     WaveCanvas canvas = new WaveCanvas();
+    WaveGraph graph;
     Table config;
     int search = -1;
     boolean batchEditing;
     boolean checkedSpawns;
-    @Nullable
-    SpawnGroup currentDragging;
 
     boolean showViewSettings;
     boolean filterPayloads, filterItems, filterEffects;
-    @Nullable UnitType filterType;
+    @Nullable
+    UnitType filterType;
     int filterSpawn = -1;
     boolean reverseSort = false;
 
@@ -125,91 +128,90 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
         cont.clear();
 
-        //main chart
-        cont.table(main -> {
-            main.stack(canvas,
-                new Label("@waves.none"){{
-                    visible(() -> groups.isEmpty());
-                    this.touchable = Touchable.disabled;
-                    setWrap(true);
-                    setAlignment(Align.center, Align.center);
-                }}, new Table(shell -> {
-                    shell.visible(() -> !selectedGroups.isEmpty());
-                    shell.pane(t -> {
-                        config = t;
-                        t.background(Tex.button);
-                    });
-                }).left().bottom(), new Table(shell -> {
-                    shell.visible(() -> showViewSettings);
-                    shell.pane(t -> {
-                        t.background(Tex.button);
-                        t.margin(16f);
-                        t.add("@waveinfo.filters").height(40f).grow().row();
-                        //boolean filters
-                        t.table(gf -> {
-                            gf.defaults().size(40f).pad(4f);
+        cont.add(new Group(){
+        });
+        cont.stack(canvas,
+            new Label("@waves.none"){{
+                visible(() -> groups.isEmpty());
+                this.touchable = Touchable.disabled;
+                setWrap(true);
+                setAlignment(Align.center, Align.center);
+            }}, new Table(shell -> {
+                shell.visible(() -> !selectedGroups.isEmpty());
+                shell.pane(t -> {
+                    config = t;
+                    t.background(Tex.button);
+                });
+            }).left().bottom(), new Table(shell -> {
+                shell.visible(() -> showViewSettings);
+                shell.pane(t -> {
+                    t.background(Tex.button);
+                    t.margin(16f);
+                    t.add("@waveinfo.filters").height(40f).grow().row();
+                    //boolean filters
+                    t.table(gf -> {
+                        gf.defaults().size(40f).pad(4f);
 
-                            gf.button(Icon.effect, Styles.squareTogglei, () -> {
-                                filterEffects = !filterEffects;
-                                buildGroups();
-                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
-                            });
+                        gf.button(Icon.effect, Styles.squareTogglei, () -> {
+                            filterEffects = !filterEffects;
+                            buildGroups();
+                            canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                        });
 
-                            gf.button(Icon.box, Styles.squareTogglei, () -> {
-                                filterItems = !filterItems;
-                                buildGroups();
-                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
-                            });
+                        gf.button(Icon.box, Styles.squareTogglei, () -> {
+                            filterItems = !filterItems;
+                            buildGroups();
+                            canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                        });
 
-                            gf.button(Icon.itchioSmall, Styles.squareTogglei, () -> {
-                                filterPayloads = !filterPayloads;
-                                buildGroups();
-                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
-                            });
+                        gf.button(Icon.itchioSmall, Styles.squareTogglei, () -> {
+                            filterPayloads = !filterPayloads;
+                            buildGroups();
+                            canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                        });
+                    }).row();
+                    //type filters
+                    t.table(gf -> {
+                        gf.defaults().height(40f).pad(4f);
+
+                        gf.button(Icon.units, Styles.squarei, () -> showAnyContentsYouWant(groups.map(sg -> sg.type).asSet().toSeq().sort(type -> type.id), "", type -> {
+                            filterType = type;
+                            buildGroups();
+                            canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                        })).width(40f).update(b -> b.getStyle().imageUp = filterType != null ? new TextureRegionDrawable(filterType.uiIcon) : Icon.units);
+
+                        gf.button("", () -> {
+                            if(!checkedSpawns){
+                                //recalculate waves when changed
+                                Vars.spawner.reset();
+                                checkedSpawns = true;
+                            }
+                            showSpawns(i -> batchEditing(g -> g.spawn = i), () -> filterSpawn);
+                        }).width(160f).get().getLabel().setText(() -> filterSpawn == -1 ? "@waves.spawn.all" : Point2.x(filterSpawn) + ", " + Point2.y(filterSpawn));
+                    }).row();
+
+                    t.add("@waveinfo.sorters").height(40f).grow().row();
+
+                    t.table(st -> {
+                        st.defaults().pad(4f);
+                        st.table(Tex.button, f -> {
+                            for(Sort s : Sort.all){
+                                f.button("@waves.sort." + s, Styles.flatt, () -> {
+                                    sort(s);
+                                    buildGroups();
+                                    canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                                }).size(80, 40f);
+                            }
                         }).row();
-                        //type filters
-                        t.table(gf -> {
-                            gf.defaults().height(40f).pad(4f);
-
-                            gf.button(Icon.units, Styles.squarei, () -> showAnyContentsYouWant(groups.map(sg -> sg.type).asSet().toSeq().sort(type -> type.id), "", type -> {
-                                filterType = type;
-                                buildGroups();
-                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
-                            })).width(40f).update(b -> b.getStyle().imageUp = filterType != null ? new TextureRegionDrawable(filterType.uiIcon) : Icon.units);
-
-                            gf.button("", () -> {
-                                if(!checkedSpawns){
-                                    //recalculate waves when changed
-                                    Vars.spawner.reset();
-                                    checkedSpawns = true;
-                                }
-                                showSpawns(i -> batchEditing(g -> g.spawn = i), () -> filterSpawn);
-                            }).width(160f).get().getLabel().setText(() -> filterSpawn == -1 ? "@waves.spawn.all" : Point2.x(filterSpawn) + ", " + Point2.y(filterSpawn));
-                        }).row();
-
-                        t.add("@waveinfo.sorters").height(40f).grow().row();
-
-                        t.table(st -> {
-                            st.defaults().pad(4f);
-                            st.table(Tex.button, f -> {
-                                for(Sort s : Sort.all){
-                                    f.button("@waves.sort." + s, Styles.flatt, () -> {
-                                        sort(s);
-                                        buildGroups();
-                                        canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
-                                    }).size(80, 40f);
-                                }
-                            }).row();
-                            st.check("@waves.sort.reverse", b -> {
-                                reverseSort = b;
-                                buildGroups();
-                                canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
-                            }).height(40f).checked(reverseSort);
-                        }).row();
-                    });
-                }).right().bottom()
-            ).grow().margin(16f);
-        }).grow();
+                        st.check("@waves.sort.reverse", b -> {
+                            reverseSort = b;
+                            buildGroups();
+                            canvas.locateWave(groups.min(g -> checkFilters(g) ? g.begin - 999999 : g.begin).begin);
+                        }).height(40f).checked(reverseSort);
+                    }).row();
+                });
+            }).right().bottom()
+        ).grow().margin(16f);
 
         cont.row();
 
@@ -276,135 +278,15 @@ public class MFEWaveInfoDialog extends BaseDialog{
      */
     void buildGroups(){
         canvas.clearChildren();
-        float marginTop = 4f;
-        int index = 0;
 
         if(groups != null){
             for(SpawnGroup group : groups){
                 if(group.effect == StatusEffects.none) group.effect = null;
-
                 if(!checkFilters(group)) continue;
 
-                int index2 = index;
-                canvas.addChild(new Table(){
-                    {
-                        margin(2f);
-                        background(Tex.whiteui);
-                        touchable = Touchable.enabled;
-                        setColor(color(group.type));
-
-                        this.addCaptureListener(new InputListener(){
-                            float downx, downy;
-                            @Override
-                            public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-                                currentDragging = group;
-                                downx = x;
-                                downy = y;
-                                return true;
-                            }
-
-                            @Override
-                            public void touchDragged(InputEvent event, float x, float y, int pointer){
-                                Core.scene.cancelTouchFocus(canvas);
-                                selectedGroups.clear();
-                                buildConfig();
-                                setTranslation((x - downx) + translation.x, (y - downy) + translation.y);
-                                super.touchDragged(event, x, y, pointer);
-                            }
-
-                            @Override
-                            public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
-                                super.touchUp(event, x, y, pointer, button);
-                                //dragging begin & end
-                                int gap = group.end - group.begin;
-                                float dx = x - downx + translation.x;
-                                if(Math.abs(dx) > canvas.tileW){
-                                    group.begin += Mathf.round(dx / canvas.tileW);
-                                    if(group.end != never) group.end += Mathf.round(dx / canvas.tileW);
-                                }
-                                group.begin = Math.max(group.begin, 0);
-                                group.end = Math.max(group.end, gap);
-                                //dragging up down
-                                float dy = y - downy + translation.y;
-                                if(Math.abs(dy) > canvas.tileH){
-                                    int newIndex = Mathf.clamp(index2 + Mathf.round(dy / canvas.tileH), 0, groups.size - 1);
-                                    groups.remove(group, true);
-                                    groups.insert(newIndex, group);
-                                    buildGroups();
-                                }
-
-                                setTranslation(0f, 0f);
-                                currentDragging = null;
-                            }
-                        });
-
-                        clicked(() -> {
-                            if(!batchEditing){
-                                if(!selectedGroups.remove(group)) selectedGroups.clear().add(group);
-                            }else{
-                                if(!selectedGroups.remove(group)) selectedGroups.add(group);
-                            }
-                            buildConfig();
-                        });
-
-                        label(() -> String.valueOf(group.begin + 1));
-                        add(new Table(t -> {
-                            image(group.type.uiIcon).size(32f).scaling(Scaling.fit);
-                            if(group.effect != null) image(group.effect.uiIcon).size(32f).scaling(Scaling.fit);
-                            if(group.items != null){
-                                var label = new Label(String.valueOf(group.items.amount));
-                                label.setAlignment(Align.bottomRight);
-                                label.setFillParent(true);
-                                label.setFontScale(0.7f);
-                                stack(new Image(group.items.item.uiIcon).setScaling(Scaling.fit), label).size(32f);
-                            }
-                            label(() -> (group.payloads == null || group.payloads.isEmpty() ? "" : Iconc.itchio + "") + (group.spawn == -1 ? "" : Iconc.blockSpawn + ""));
-                        }){
-                            @Override
-                            public float getPrefWidth(){
-                                return 1f;
-                            }
-                        }).grow();
-                        label(() -> group.end == SpawnGroup.never ? "∞" : String.valueOf(group.end + 1));
-                    }
-
-                    @Override
-                    public void act(float delta){
-                        super.act(delta);
-                        setPosition(canvas.tileX(group.begin), -canvas.camera.y + canvas.tileH * index2 + 16f);
-                        setSize(Mathf.clamp(canvas.tileX(group.end + (group.end == never ? 0 : 1)) - canvas.tileX(group.begin), getPrefWidth(), canvas.getWidth()), canvas.tileH - marginTop);
-                    }
-
-                    @Override
-                    protected void drawBackground(float x, float y){
-                        boolean selected = selectedGroups.contains(group, true);
-                        Tmp.c2.set(color);
-                        color.set(Color.white).a(selected ? 1f : 0.3f);
-                        super.drawBackground(x, y);
-                        color.set(Tmp.c2);
-
-                        //spacing block
-                        Draw.color(selected ? Pal.accent : currentDragging == group ? Color.royal : color);
-                        Draw.alpha(0.6f * parentAlpha);
-                        Fill.rect(Tmp.r1.set(canvas.tileX(group.begin), y, canvas.tileX(group.end) + canvas.tileW - canvas.tileX(group.begin), canvas.tileH - marginTop).move(0f, -translation.y));
-
-                        //spawning block
-                        int start = canvas.getStartWave();
-                        int end = canvas.getEndWave();
-                        Draw.alpha(this.parentAlpha);
-                        for(int i = group.begin; i <= group.end && i <= end; i += group.spacing){
-                            if(i < start) continue;
-                            Fill.rect(Tmp.r1.set(canvas.tileX(i), y, canvas.tileX(i + 1) - canvas.tileX(i), canvas.tileH - marginTop).move(0f, -translation.y));
-                        }
-                        Draw.reset();
-                        color.a(1f);
-                    }
-                });
-
-                index++;
+                canvas.addGroup(group);
             }
         }
-
 
         buildConfig();
     }
@@ -660,6 +542,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
         BaseDialog dialog = new BaseDialog(""){
             Table pane;
             boolean showConfig;
+
             {
                 addCloseButton();
                 buttons.button("@add", Styles.togglet, () -> showConfig = !showConfig);
@@ -730,7 +613,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
         return Tmp.c1.fromHsv(type.id / (float)Vars.content.units().size * 360f, 0.7f, 0.8f).a(1f);
     }
 
-    public class WaveCanvas extends WidgetGroup implements GestureDetector.GestureListener{
+    void updateGraph(){
+        graph.groups = this.groups;
+    }
+
+    public class WaveCanvas extends WidgetGroup{
         float tileH, tileW;
         Vec2 vec = new Vec2(), sv = new Vec2();
         /**
@@ -748,6 +635,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
             addCaptureListener(new InputListener(){
                 float lx, ly;
+
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
                     if(button != KeyCode.mouseRight) return false;  //stop dragging and up
@@ -787,7 +675,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             camera.add(vec.x, vec.y);
             sv.scl(0.5f);
             vec.scl(0.9f);
-            camera.lerpDelta(Math.max(camera.x, -180f), Mathf.clamp(camera.y, -60f, tileH * (groups.size + 1) - getHeight() + 20f), 0.1f);
+            camera.lerpDelta(Math.max(camera.x, -100f), Mathf.clamp(camera.y, -60f, tileH * (groups.size + 1) - getHeight() + 20f), 0.1f);
         }
 
         public int getStartWave(){
@@ -830,7 +718,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
             applyTransform(computeTransform());
             Draw.flush();
-            if(clipBegin(0, 16, getWidth(), getHeight())){
+            if(clipBegin(0, Scl.scl(16f), getWidth(), getHeight())){
                 drawChildren();
                 Draw.flush();
                 clipEnd();
@@ -839,7 +727,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
         }
 
         public void locateWave(int wave){
-            camera.x = Mathf.maxZero(canvas.tileW * wave - canvas.getWidth() / 2f);
+            camera.x = Mathf.maxZero(tileW * wave - getWidth() / 2f);
         }
 
         public void scroll(float amount){
@@ -848,6 +736,132 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
         void scaleX(int amount){
             tileW += amount;
+        }
+
+        public void addGroup(SpawnGroup group){
+            addChild(new SpawnGroupBar(group, children.size));
+        }
+
+        public class SpawnGroupBar extends Table{
+            static float marginTop = 4f;
+            SpawnGroup group;
+            int index;
+            boolean dragging;
+
+            public SpawnGroupBar(SpawnGroup group, int i){
+                this.group = group;
+                this.index = i;
+                margin(2f);
+                background(Tex.whiteui);
+                touchable = Touchable.enabled;
+                setColor(color(group.type));
+
+                this.addCaptureListener(new InputListener(){
+                    float downx, downy;
+
+                    @Override
+                    public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
+                        downx = x;
+                        downy = y;
+                        dragging = true;
+                        return true;
+                    }
+
+                    @Override
+                    public void touchDragged(InputEvent event, float x, float y, int pointer){
+                        selectedGroups.clear();
+                        buildConfig();
+                        setTranslation((x - downx) + translation.x, (y - downy) + translation.y);
+                        super.touchDragged(event, x, y, pointer);
+                    }
+
+                    @Override
+                    public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
+                        super.touchUp(event, x, y, pointer, button);
+                        //dragging begin & end
+                        int gap = group.end - group.begin;
+                        float dx = x - downx + translation.x;
+                        if(Math.abs(dx) > tileW){
+                            group.begin += Mathf.round(dx / tileW);
+                            if(group.end != never) group.end += Mathf.round(dx / tileW);
+                        }
+                        group.begin = Math.max(group.begin, 0);
+                        group.end = Math.max(group.end, gap);
+                        //dragging up down
+                        float dy = y - downy + translation.y;
+                        if(Math.abs(dy) > tileH){
+                            int newIndex = Mathf.clamp(index + Mathf.round(dy / tileH), 0, groups.size - 1);
+                            groups.remove(group, true);
+                            groups.insert(newIndex, group);
+                            buildGroups();
+                        }
+
+                        setTranslation(0f, 0f);
+                        dragging = false;
+                    }
+                });
+
+                clicked(() -> {
+                    if(!batchEditing){
+                        if(!selectedGroups.remove(group)) selectedGroups.clear().add(group);
+                    }else{
+                        if(!selectedGroups.remove(group)) selectedGroups.add(group);
+                    }
+                    buildConfig();
+                });
+
+                label(() -> String.valueOf(group.begin + 1));
+                add(new Table(t -> {
+                    image(group.type.uiIcon).size(32f).scaling(Scaling.fit);
+                    if(group.effect != null) image(group.effect.uiIcon).size(32f).scaling(Scaling.fit);
+                    if(group.items != null){
+                        var label = new Label(String.valueOf(group.items.amount));
+                        label.setAlignment(Align.bottomRight);
+                        label.setFillParent(true);
+                        label.setFontScale(0.7f);
+                        stack(new Image(group.items.item.uiIcon).setScaling(Scaling.fit), label).size(32f);
+                    }
+                    label(() -> (group.payloads == null || group.payloads.isEmpty() ? "" : Iconc.itchio + "") + (group.spawn == -1 ? "" : Iconc.blockSpawn + ""));
+                }){
+                    @Override
+                    public float getPrefWidth(){
+                        return 1f;
+                    }
+                }).grow();
+                label(() -> group.end == SpawnGroup.never ? "∞" : String.valueOf(group.end + 1));
+            }
+
+            @Override
+            public void act(float delta){
+                super.act(delta);
+                setPosition(tileX(group.begin), -camera.y + tileH * index + 16f);
+                setSize(Mathf.clamp(tileX(group.end + (group.end == never ? 0 : 1)) - tileX(group.begin), getPrefWidth(), WaveCanvas.this.getWidth()), tileH - marginTop);
+            }
+
+            @Override
+            protected void drawBackground(float x, float y){
+                boolean selected = selectedGroups.contains(group, true);
+                Tmp.c2.set(color);
+                color.set(Color.white).a(selected ? 1f : 0.3f);
+                super.drawBackground(x, y);
+                color.set(Tmp.c2);
+
+                //spacing block
+                Draw.color(selected ? Pal.accent : dragging ? Color.royal : color);
+                Draw.alpha(0.6f * parentAlpha);
+                Fill.rect(Tmp.r1.set(tileX(group.begin), y, tileX(group.end) + tileW - tileX(group.begin), tileH - marginTop).move(0f, -translation.y));
+
+                //spawning block
+                int start = getStartWave();
+                int end = getEndWave();
+                Draw.alpha(this.parentAlpha);
+                for(int i = group.begin; i <= group.end && i <= end; i += group.spacing){
+                    if(i < start) continue;
+                    Fill.rect(Tmp.r1.set(tileX(i), y, tileX(i + 1) - tileX(i), tileH - marginTop).move(0f, -translation.y));
+                }
+                Draw.reset();
+                color.a(1f);
+            }
         }
     }
 
