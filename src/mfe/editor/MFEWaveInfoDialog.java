@@ -304,7 +304,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             b.add().growX();
 
             b.button(Icon.copySmall, Styles.emptyi, () -> {
-                groups.insert(groups.indexOf(group) + 1, group.copy());
+                groups.insert(groups.indexOf(group) + 1, copy(group));
                 buildGroups();
             }).pad(-6).size(46f).tooltip("@editor.copy").disabled(bb -> batchEditing);
 
@@ -319,7 +319,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 buildGroups();
             }).pad(-6).size(46f).padRight(-12f).tooltip("@waves.remove");
             b.clicked(KeyCode.mouseMiddle, () -> {
-                groups.insert(groups.indexOf(group) + 1, group.copy());
+                groups.insert(groups.indexOf(group) + 1, copy(group));
                 buildGroups();
             });
         }).row();
@@ -408,7 +408,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             }).width(300f).row();
 
             t.table(a -> {
-                a.button(b -> b.image(group.items == null ? Icon.none.getRegion() : group.items.item.uiIcon).scaling(Scaling.fit).size(32f), () -> showAnyContentsYouWant(content.items().removeAll(Item::isHidden), "", item -> {
+                a.button(b -> b.image(group.items == null ? Icon.none.getRegion() : group.items.item.uiIcon).scaling(Scaling.fit).size(32f), () -> showAnyContentsYouWant(content.items().copy().removeAll(Item::isHidden), "", item -> {
                     batchEditing(g -> {
                         if(g.items == null) g.items = new ItemStack().set(Items.copper, g.type.itemCapacity);
                         g.items.item = item;
@@ -449,6 +449,13 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 }).width(160f).height(36f).get().getLabel().setText(() -> group.spawn == -1 ? "@waves.spawn.all" : Point2.x(group.spawn) + ", " + Point2.y(group.spawn));
             }).padBottom(8f).row();
         }).width(300f).row();
+    }
+
+    SpawnGroup copy(SpawnGroup group){
+        var copy = group.copy();
+        copy.items = group.items.copy();
+        copy.payloads = group.payloads.copy();
+        return copy;
     }
 
     void batchEditing(Cons<SpawnGroup> run){
