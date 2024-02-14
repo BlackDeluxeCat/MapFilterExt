@@ -493,8 +493,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
     SpawnGroup copy(SpawnGroup group){
         var copy = group.copy();
-        copy.items = group.items.copy();
-        copy.payloads = group.payloads.copy();
+        copy.items = group.items == null ? null : group.items.copy();
+        copy.payloads = group.payloads == null ? null : group.payloads.copy();
         return copy;
     }
 
