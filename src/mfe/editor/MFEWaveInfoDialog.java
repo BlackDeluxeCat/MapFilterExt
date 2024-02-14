@@ -42,6 +42,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
     boolean checkedSpawns;
 
     boolean showViewSettings, showWaveGraph;
+    Table viewSettings, graphViewSettings, graphViewSettingsColors;
     boolean filterPayloads, filterItems, filterEffects;
     @Nullable
     UnitType filterType;
@@ -147,6 +148,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             new Table(shell -> {
                 shell.visible(() -> showViewSettings && !showWaveGraph);
                 shell.pane(t -> {
+                    viewSettings = t;
                     t.background(Tex.button);
                     t.margin(16f);
                     t.add("@waveinfo.filters").height(40f).grow().row();
@@ -216,7 +218,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
             new Table(shell -> {
                 shell.visible(() -> showViewSettings && showWaveGraph);
-                shell.pane(t -> {
+                shell.table(t -> {
+                    graphViewSettings = t;
                     t.background(Tex.button);
                     t.margin(16f);
                     ButtonGroup<Button> group = new ButtonGroup<>();
@@ -226,7 +229,10 @@ public class MFEWaveInfoDialog extends BaseDialog{
                             canvas.mode = m;
                         }).group(group).height(35f).update(b -> b.setChecked(m == canvas.mode)).width(130f);
                     }
-                });
+                }).row();
+                shell.table(col -> {
+                    graphViewSettingsColors = col;
+                }).growX();
             }).right().bottom()
         ).grow().margin(16f);
 
@@ -303,7 +309,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
     }
 
     /**
-     * Rebuild groups chart. Also rebuild config table.
+     * Rebuild group bars. Also rebuild config table.
      */
     void buildGroups(){
         canvas.clearChildren();
@@ -322,8 +328,12 @@ public class MFEWaveInfoDialog extends BaseDialog{
         buildConfig();
     }
 
+    /** Called when spawn group config changed. */
     void buildConfig(){
         if(config == null || selectedGroups.isEmpty()) return;
+
+        canvas.cookStats();
+
         var group = selectedGroups.get(selectedGroups.size - 1);
         config.clear();
         config.button("@waveinfo.deselect", () -> selectedGroups.clear()).width(300f).row();
@@ -601,7 +611,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         tt.pane(p -> {
                             p.defaults().pad(2).fillX();
                             int i = 0;
-                            for(var type : content.units()){
+                            for(var type : content.units().copy().removeAll(u -> u == UnitTypes.block)){
                                 p.button(b -> {
                                     b.center();
                                     b.image(type.uiIcon).size(6 * 8).scaling(Scaling.fit).padRight(2f);
@@ -813,10 +823,13 @@ public class MFEWaveInfoDialog extends BaseDialog{
         public void act(float delta){
             super.act(delta);
             this.getCullingArea().set(0, 0, getWidth(), getHeight());
+
             camera.add(vec.x, vec.y);
+            //vec decay
             sv.scl(0.5f);
             vec.scl(0.9f);
             camera.lerpDelta(Math.max(camera.x, -100f), Mathf.clamp(camera.y, -60f, tileH * (groups.size + 1) - getHeight() + 20f), 0.1f);
+
             int lastStart = start, lastEnd = end;
             start = getStartWave();
             end = getEndWave();
@@ -849,8 +862,9 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 float cx = -camera.x + i * tileW;
                 if(cx < 0) continue;
                 float dx = cx + this.x;
-                float dy = this.y;
                 Lines.dashLine(dx, y1, dx, y2, 60);
+
+                float dy = this.y;
                 if(Mathf.mod(i, gap) == 0) font.draw(String.valueOf(i + 1), dx + tileW / 2f, dy + 12, Align.center);
                 if(search == i){
                     Fill.rect(Tmp.r1.set(dx, dy, tileW, getHeight()));
@@ -909,6 +923,42 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 maxTotal = Math.max(maxTotal, sum);
                 maxHealth = Math.max(maxHealth, healthsum);
             }
+
+            ObjectSet<UnitType> usedCopy = new ObjectSet<>(used);
+
+            var colors = graphViewSettingsColors;
+            colors.clear();
+            colors.left();
+            colors.button("@waves.units.hide", Styles.flatt, () -> {
+                if(hidden.size == usedCopy.size){
+                    hidden.clear();
+                }else{
+                    hidden.addAll(usedCopy);
+                }
+
+                used.clear();
+                used.addAll(usedCopy);
+                for(UnitType o : hidden) used.remove(o);
+            }).update(b -> b.setText(hidden.size == usedCopy.size ? "@waves.units.show" : "@waves.units.hide")).height(32f).width(130f);
+            colors.pane(t -> {
+                t.left();
+                for(UnitType type : used.toSeq().sort(u -> u.id)){
+                    t.button(b -> {
+                        Color tcolor = color(type).cpy();
+                        b.image().size(32f).update(i -> i.setColor(b.isChecked() ? Tmp.c1.set(tcolor).mul(0.5f) : tcolor)).get().act(1);
+                        b.image(type.uiIcon).size(32f).padRight(20).update(i -> i.setColor(b.isChecked() ? Color.gray : Color.white)).get().act(1);
+                        b.margin(0f);
+                    }, Styles.fullTogglet, () -> {
+                        if(!hidden.add(type)){
+                            hidden.remove(type);
+                        }
+
+                        used.clear();
+                        used.addAll(usedCopy);
+                        for(UnitType o : hidden) used.remove(o);
+                    }).update(b -> b.setChecked(hidden.contains(type)));
+                }
+            }).scrollY(false);
 
             for(UnitType type : hidden){
                 used.remove(type);
