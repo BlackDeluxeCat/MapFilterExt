@@ -5,7 +5,6 @@ import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.input.*;
-import arc.input.GestureDetector.*;
 import arc.math.*;
 import arc.math.geom.*;
 import arc.scene.*;
@@ -694,15 +693,16 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
                     pinching = Core.input.isTouched(1);
-                    if(!pinching && button != KeyCode.mouseRight) return false;  //stop dragging and up
-                    if(!pinching) return false;
-                    Core.scene.cancelTouchFocusExcept(this, WaveCanvas.this);
-                    sv.setZero();
-                    vec.setZero();
-                    lx = x;
-                    ly = y;
-                    //event.stop();   //prevent children to receive it.
-                    return true;
+                    if(pinching || button == KeyCode.mouseRight){
+                        event.stop();
+                        Core.scene.cancelTouchFocusExcept(this, WaveCanvas.this);//prevent children to drag.
+                        sv.setZero();
+                        vec.setZero();
+                        lx = x;
+                        ly = y;
+                        return true;
+                    }
+                    return false;
                 }
 
                 @Override
