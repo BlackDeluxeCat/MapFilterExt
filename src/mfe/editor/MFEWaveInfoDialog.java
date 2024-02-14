@@ -5,6 +5,7 @@ import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 import arc.input.*;
+import arc.input.GestureDetector.*;
 import arc.math.*;
 import arc.math.geom.*;
 import arc.scene.*;
@@ -18,7 +19,6 @@ import arc.util.pooling.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.ctype.*;
-import mindustry.editor.*;
 import mindustry.game.*;
 import mindustry.gen.*;
 import mindustry.graphics.*;
@@ -691,7 +691,9 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-                    if(button != KeyCode.mouseRight) return false;  //stop dragging and up
+                    boolean pinching = Core.input.isTouched(1);
+                    if(pinching) Core.scene.cancelTouchFocusExcept(this, WaveCanvas.this);
+                    if(!pinching && button != KeyCode.mouseRight) return false;  //stop dragging and up
                     sv.setZero();
                     vec.setZero();
                     lx = x;
@@ -702,6 +704,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                 @Override
                 public void touchDragged(InputEvent event, float x, float y, int pointer){
+                    if(Core.input.isTouched(1)) event.stop();
                     sv.sub(x - lx, y - ly);
                     camera.sub(x - lx, y - ly);
                     lx = x;
@@ -1107,6 +1110,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 color.a(1f);
             }
         }
+
     }
 
     public enum Mode{
