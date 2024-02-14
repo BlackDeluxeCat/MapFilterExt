@@ -694,19 +694,19 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
                     pinching = Core.input.isTouched(1);
-                    if(pinching) Core.scene.cancelTouchFocusExcept(this, WaveCanvas.this);
                     if(!pinching && button != KeyCode.mouseRight) return false;  //stop dragging and up
+                    if(!pinching) return false;
+                    Core.scene.cancelTouchFocusExcept(this, WaveCanvas.this);
                     sv.setZero();
                     vec.setZero();
                     lx = x;
                     ly = y;
-                    event.stop();   //prevent children to receive it.
+                    //event.stop();   //prevent children to receive it.
                     return true;
                 }
 
                 @Override
                 public void touchDragged(InputEvent event, float x, float y, int pointer){
-                    if(Core.input.isTouched(1)) event.stop();
                     sv.sub(x - lx, y - ly);
                     camera.sub(x - lx, y - ly);
                     lx = x;
