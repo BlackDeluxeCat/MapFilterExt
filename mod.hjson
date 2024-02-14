@@ -6,15 +6,15 @@ main: "mfe.MapFilterExt"
 dependencies: [
 "mitour-lib"
 ]
-description: "Added some useful filters.
-Added a powerful custom guide tool to map editor.
-添加实用的地图筛选器，添加强大的图像绘制工具。
+description: "Added some useful map filters.
+Added a powerful custom guide tool and advanced wave editor to map editor.
+添加实用地图筛选器、强大的图像绘制工具、改进的波次编辑器。
 
 Github Repo: BlackDeluxeCat/MapFilterExt
 
 Dependencies: [accent]BlackDeluxeCat/MiTour-Lib"
 
-version: 1.7.4
+version: 1.7.5
 minGameVersion: 146
 java: true
 hidden: true
