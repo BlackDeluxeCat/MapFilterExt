@@ -678,6 +678,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
         float maxHealth;
         ObjectSet<UnitType> hidden = new ObjectSet<>();
 
+        boolean pinching;
+
         public WaveCanvas(){
             this.setTransform(true);
             this.setCullingArea(new Rect());
@@ -691,7 +693,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
-                    boolean pinching = Core.input.isTouched(1);
+                    pinching = Core.input.isTouched(1);
                     if(pinching) Core.scene.cancelTouchFocusExcept(this, WaveCanvas.this);
                     if(!pinching && button != KeyCode.mouseRight) return false;  //stop dragging and up
                     sv.setZero();
@@ -1026,21 +1028,23 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     public void touchUp(InputEvent event, float x, float y, int pointer, KeyCode button){
                         super.touchUp(event, x, y, pointer, button);
                         //dragging begin & end
-                        int gap = group.end - group.begin;
-                        float dx = x - downx + translation.x;
-                        if(Math.abs(dx) > tileW){
-                            group.begin += Mathf.round(dx / tileW);
-                            if(group.end != never) group.end += Mathf.round(dx / tileW);
-                        }
-                        group.begin = Math.max(group.begin, 0);
-                        group.end = Math.max(group.end, gap);
-                        //dragging up down
-                        float dy = y - downy + translation.y;
-                        if(Math.abs(dy) > tileH){
-                            int newIndex = Mathf.clamp(index + Mathf.round(dy / tileH), 0, groups.size - 1);
-                            groups.remove(group, true);
-                            groups.insert(newIndex, group);
-                            buildGroups();
+                        if(!pinching){
+                            int gap = group.end - group.begin;
+                            float dx = x - downx + translation.x;
+                            if(Math.abs(dx) > tileW){
+                                group.begin += Mathf.round(dx / tileW);
+                                if(group.end != never) group.end += Mathf.round(dx / tileW);
+                            }
+                            group.begin = Math.max(group.begin, 0);
+                            group.end = Math.max(group.end, gap);
+                            //dragging up down
+                            float dy = y - downy + translation.y;
+                            if(Math.abs(dy) > tileH){
+                                int newIndex = Mathf.clamp(index + Mathf.round(dy / tileH), 0, groups.size - 1);
+                                groups.remove(group, true);
+                                groups.insert(newIndex, group);
+                                buildGroups();
+                            }
                         }
 
                         setTranslation(0f, 0f);
