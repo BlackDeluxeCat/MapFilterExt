@@ -36,13 +36,12 @@ public class MFEWaveInfoDialog extends BaseDialog{
     Seq<SpawnGroup> groups = new Seq<>();
     Seq<SpawnGroup> selectedGroups = new Seq<>();
     WaveCanvas canvas = new WaveCanvas();
-    WaveGraph graph;
     Table config;
     int search = -1;
     boolean batchEditing;
     boolean checkedSpawns;
 
-    boolean showViewSettings;
+    boolean showViewSettings, showWaveGraph;
     boolean filterPayloads, filterItems, filterEffects;
     @Nullable
     UnitType filterType;
@@ -128,22 +127,25 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
         cont.clear();
 
-        cont.add(new Group(){
-        });
+        //main
         cont.stack(canvas,
             new Label("@waves.none"){{
                 visible(() -> groups.isEmpty());
                 this.touchable = Touchable.disabled;
                 setWrap(true);
                 setAlignment(Align.center, Align.center);
-            }}, new Table(shell -> {
+            }},
+
+            new Table(shell -> {
                 shell.visible(() -> !selectedGroups.isEmpty());
                 shell.pane(t -> {
                     config = t;
                     t.background(Tex.button);
                 });
-            }).left().bottom(), new Table(shell -> {
-                shell.visible(() -> showViewSettings);
+            }).left().bottom(),
+
+            new Table(shell -> {
+                shell.visible(() -> showViewSettings && !showWaveGraph);
                 shell.pane(t -> {
                     t.background(Tex.button);
                     t.margin(16f);
@@ -210,6 +212,21 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         }).height(40f).checked(reverseSort);
                     }).row();
                 });
+            }).right().bottom(),
+
+            new Table(shell -> {
+                shell.visible(() -> showViewSettings && showWaveGraph);
+                shell.pane(t -> {
+                    t.background(Tex.button);
+                    t.margin(16f);
+                    ButtonGroup<Button> group = new ButtonGroup<>();
+
+                    for(Mode m : Mode.all){
+                        t.button("@wavemode." + m.name(), Styles.fullTogglet, () -> {
+                            canvas.mode = m;
+                        }).group(group).height(35f).update(b -> b.setChecked(m == canvas.mode)).width(130f);
+                    }
+                });
             }).right().bottom()
         ).grow().margin(16f);
 
@@ -231,14 +248,24 @@ public class MFEWaveInfoDialog extends BaseDialog{
             });
             tools.add().growX().minWidth(0f);
 
-            tools.button("<", () -> {}).update(t -> {
+            tools.button(Iconc.left + "", () -> {}).update(t -> {
                 if(t.getClickListener().isPressed()){
-                    canvas.scroll(-20);
+                    canvas.scrollX(-20);
                 }
             }).width(60f);
-            tools.button(">", () -> {}).update(t -> {
+            tools.button(Iconc.right + "", () -> {}).update(t -> {
                 if(t.getClickListener().isPressed()){
-                    canvas.scroll(20);
+                    canvas.scrollX(20);
+                }
+            }).width(60f);
+            tools.button(Iconc.up + "", () -> {}).update(t -> {
+                if(t.getClickListener().isPressed()){
+                    canvas.scrollY(20);
+                }
+            }).width(60f);
+            tools.button(Iconc.down + "", () -> {}).update(t -> {
+                if(t.getClickListener().isPressed()){
+                    canvas.scrollY(-20);
                 }
             }).width(60f);
             tools.button("-", () -> {}).update(t -> {
@@ -251,10 +278,12 @@ public class MFEWaveInfoDialog extends BaseDialog{
                     canvas.scaleX(1);
                 }
             }).width(60f);
-            tools.button(Icon.filter, Styles.clearTogglei, () -> showViewSettings = !showViewSettings).checked(showViewSettings).width(60f).padLeft(8f);
-        }).growX();
 
-        //cont.add(graph = new WaveGraph()).grow();
+            tools.button(Icon.filter, Styles.clearTogglei, () -> showViewSettings = !showViewSettings).checked(showViewSettings).width(60f).padLeft(8f);
+            tools.button(Icon.chartBar, Styles.clearTogglei, () -> {
+                showWaveGraph = !showWaveGraph;
+            });
+        }).growX();
 
         buildGroups();
     }
@@ -287,6 +316,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 canvas.addGroup(group);
             }
         }
+
+        canvas.addChild(canvas.graphDrawer);
 
         buildConfig();
     }
@@ -620,10 +651,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
         return Tmp.c1.fromHsv(type.id / (float)Vars.content.units().size * 360f, 0.7f, 0.8f).a(1f);
     }
 
-    void updateGraph(){
-        graph.groups = this.groups;
-    }
-
     public class WaveCanvas extends WidgetGroup{
         float tileH, tileW;
         Vec2 vec = new Vec2(), sv = new Vec2();
@@ -631,6 +658,15 @@ public class MFEWaveInfoDialog extends BaseDialog{
          * camera position left bottom.
          */
         public Vec2 camera = new Vec2();
+        int start, end;
+
+        Element graphDrawer;
+        Mode mode = Mode.counts;
+        int[][] values;
+        OrderedSet<UnitType> used = new OrderedSet<>();
+        int max, maxTotal;
+        float maxHealth;
+        ObjectSet<UnitType> hidden = new ObjectSet<>();
 
         public WaveCanvas(){
             this.setTransform(true);
@@ -669,10 +705,108 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                 @Override
                 public boolean scrolled(InputEvent event, float x, float y, float amountX, float amountY){
-                    scroll(amountY * 100f * (1f + Math.abs(x / getWidth() - 0.5f) * 8f));
+                    scrollX(amountY * 100f * (1f + Math.abs(x / getWidth() - 0.5f) * 8f));
                     return super.scrolled(event, x, y, amountX, amountY);
                 }
             });
+
+            graphDrawer = new Element(){
+                @Override
+                public void draw(){
+                    super.draw();
+                    Styles.black8.draw(x, y, width, height);
+
+                    Lines.stroke(Scl.scl(3f));
+
+                    GlyphLayout lay = Pools.obtain(GlyphLayout.class, GlyphLayout::new);
+                    Font font = Fonts.outline;
+
+                    lay.setText(font, "1");
+
+                    int maxY = switch(mode){
+                        case counts -> nextStep(max);
+                        case health -> nextStep((int)maxHealth);
+                        case totals -> nextStep(maxTotal);
+                    };
+
+                    float fh = lay.height;
+                    float offsetX = Scl.scl(lay.width * (maxY + "").length() * 2), offsetY = Scl.scl(24f) + fh;
+
+                    float graphX = x + offsetX, graphY = y + offsetY, graphW = width - offsetX, graphH = height - offsetY;
+
+                    if(mode == Mode.counts){
+                        for(UnitType type : used.orderedItems()){
+                            Draw.color(color(type));
+                            Draw.alpha(parentAlpha);
+
+                            Lines.beginLine();
+
+                            for(int i = 0; i < values.length; i++){
+                                int val = values[i][type.id];
+                                float cy = graphY + val * graphH / maxY;
+                                Lines.linePoint(tileW / 2f + tileX(start + i), cy);
+                            }
+
+                            Lines.endLine();
+                        }
+                    }else if(mode == Mode.totals){
+                        Lines.beginLine();
+
+                        Draw.color(Pal.accent);
+                        for(int i = 0; i < values.length; i++){
+                            int sum = 0;
+                            for(UnitType type : used.orderedItems()){
+                                sum += values[i][type.id];
+                            }
+
+                            float cy = graphY + sum * graphH / maxY;
+                            Lines.linePoint(tileW / 2f + tileX(start + i), cy);
+                        }
+
+                        Lines.endLine();
+                    }else if(mode == Mode.health){
+                        Lines.beginLine();
+
+                        Draw.color(Pal.health);
+                        for(int i = 0; i < values.length; i++){
+                            float sum = 0;
+                            for(UnitType type : used.orderedItems()){
+                                sum += (type.health) * values[i][type.id];
+                            }
+
+                            float cy = graphY + sum * graphH / maxY;
+                            Lines.linePoint(tileW / 2f + tileX(start + i), cy);
+                        }
+
+                        Lines.endLine();
+                    }
+
+                    //how many numbers can fit here
+                    float totalMarks = Mathf.clamp(maxY, 1, 10);
+
+                    int markSpace = Math.max(1, Mathf.ceil(maxY / totalMarks));
+
+                    Draw.color(Color.lightGray);
+                    Draw.alpha(0.1f);
+
+                    for(int i = 0; i < maxY; i += markSpace){
+                        float cy = graphY + i * graphH / maxY, cx = graphX;
+
+                        Lines.line(cx, cy, cx + graphW, cy);
+
+                        lay.setText(font, "" + i);
+
+                        font.draw("" + i, cx, cy + lay.height / 2f, Align.right);
+                    }
+
+                    font.setColor(Color.white);
+
+                    Pools.free(lay);
+
+                    Draw.reset();
+                }
+            }.visible(() -> showWaveGraph);
+            graphDrawer.setFillParent(true);
         }
 
         @Override
@@ -683,6 +817,10 @@ public class MFEWaveInfoDialog extends BaseDialog{
             sv.scl(0.5f);
             vec.scl(0.9f);
             camera.lerpDelta(Math.max(camera.x, -100f), Mathf.clamp(camera.y, -60f, tileH * (groups.size + 1) - getHeight() + 20f), 0.1f);
+            int lastStart = start, lastEnd = end;
+            start = getStartWave();
+            end = getEndWave();
+            if(lastStart != start || lastEnd != end) cookStats();
         }
 
         public int getStartWave(){
@@ -700,15 +838,13 @@ public class MFEWaveInfoDialog extends BaseDialog{
         @Override
         public void draw(){
             //draw axis
-            int start = getStartWave();
-            int end = getEndWave();
             int gap = Mathf.ceil(100f / tileW);
             Lines.stroke(4f);
             Draw.color(Color.gray, 0.3f);
             Font font = Fonts.outline;
             font.setColor(Color.gray);
             float y1 = this.y + Math.max(16, -camera.y);
-            float y2 = this.y + Math.min(getHeight(), getChildren() == null || getChildren().isEmpty() ? y1 : getChildren().max(Element::getTop).getTop());
+            float y2 = this.y + Math.min(getHeight(), getChildren() == null || getChildren().isEmpty() ? y1 : getChildren().max(e -> e instanceof SpawnGroupBar ? e.getTop() : 0f).getTop());
             for(int i = start / gap * gap; i < end; i += 1){
                 float cx = -camera.x + i * tileW;
                 if(cx < 0) continue;
@@ -737,12 +873,63 @@ public class MFEWaveInfoDialog extends BaseDialog{
             camera.x = Mathf.maxZero(tileW * wave - getWidth() / 2f);
         }
 
-        public void scroll(float amount){
+        public void scrollX(float amount){
             camera.x += amount;
+        }
+
+        public void scrollY(float amount){
+            camera.y += amount;
         }
 
         void scaleX(int amount){
             tileW += amount;
+        }
+
+        public void cookStats(){
+            values = new int[end - start + 1][Vars.content.units().size];
+            used.clear();
+            max = maxTotal = 1;
+            maxHealth = 1f;
+
+            for(int i = start; i <= end; i++){
+                int index = i - start;
+                float healthsum = 0f;
+                int sum = 0;
+
+                for(SpawnGroup spawn : groups){
+                    int spawned = spawn.getSpawned(i);
+                    values[index][spawn.type.id] += spawned;
+                    if(spawned > 0){
+                        used.add(spawn.type);
+                    }
+                    max = Math.max(max, values[index][spawn.type.id]);
+                    healthsum += spawned * (spawn.type.health);
+                    sum += spawned;
+                }
+                maxTotal = Math.max(maxTotal, sum);
+                maxHealth = Math.max(maxHealth, healthsum);
+            }
+
+            for(UnitType type : hidden){
+                used.remove(type);
+            }
+        }
+
+        int nextStep(float value){
+            int order = 1;
+            while(order < value){
+                if(order * 2 > value){
+                    return order * 2;
+                }
+                if(order * 5 > value){
+                    return order * 5;
+                }
+                if(order * 10 > value){
+                    return order * 10;
+                }
+                order *= 10;
+            }
+            return order;
         }
 
         public void addGroup(SpawnGroup group){
@@ -872,7 +1059,13 @@ public class MFEWaveInfoDialog extends BaseDialog{
         }
     }
 
-    enum Sort{
+    public enum Mode{
+        counts, totals, health;
+
+        static Mode[] all = values();
+    }
+
+    public enum Sort{
         begin(g -> g.begin, g -> g.type.id),
         end(g -> g.end, g -> g.type.id),
         type(g -> g.type.id);
