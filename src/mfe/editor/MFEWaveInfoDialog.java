@@ -1,9 +1,11 @@
 package mfe.editor;
 
 import arc.*;
+import arc.files.*;
 import arc.func.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
+import arc.graphics.gl.*;
 import arc.input.*;
 import arc.math.*;
 import arc.math.geom.*;
@@ -17,6 +19,7 @@ import arc.util.*;
 import arc.util.pooling.*;
 import mindustry.*;
 import mindustry.content.*;
+import mindustry.core.*;
 import mindustry.ctype.*;
 import mindustry.game.*;
 import mindustry.gen.*;
@@ -113,13 +116,16 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 groups.clear();
                 groups = Waves.generate(1f / 10f);
                 buildGroups();
-            }).width(200f);
+            }).width(150f);
+
+            buttons.button("Screenshot", () -> canvas.screenshot());
         }
     }
 
     void setup(){
         groups = JsonIO.copy(state.rules.spawns.isEmpty() ? waves.get() : state.rules.spawns);
         if(groups == null) groups = new Seq<>();
+        canvas.camera.setZero();
         checkedSpawns = false;
         batchEditing = false;
         selectedGroups.clear();
@@ -667,7 +673,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
          * camera position left bottom.
          */
         public Vec2 camera = new Vec2();
-        int start, end;
+        int start, end, tail;
 
         Element graphDrawer;
         Mode mode = Mode.counts;
@@ -826,7 +832,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
         @Override
         public void act(float delta){
-            super.act(delta);
             this.getCullingArea().set(0, 0, getWidth(), getHeight());
 
             camera.add(vec.x, vec.y);
@@ -834,6 +839,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
             sv.scl(0.5f);
             vec.scl(0.9f);
             camera.lerpDelta(Math.max(camera.x, -100f), Mathf.clamp(camera.y, -60f, tileH * (groups.size + 1) - getHeight() + 20f), 0.1f);
+
+            super.act(delta);
 
             int lastStart = start, lastEnd = end;
             start = getStartWave();
@@ -856,36 +863,43 @@ public class MFEWaveInfoDialog extends BaseDialog{
         @Override
         public void draw(){
             //draw axis
-            int gap = Mathf.ceil(100f / tileW);
-            Lines.stroke(4f);
-            Draw.color(Color.gray, 0.3f);
-            Font font = Fonts.outline;
-            font.setColor(Color.gray);
-            float y1 = this.y + Math.max(16, -camera.y);
-            float y2 = this.y + Math.min(getHeight(), getChildren() == null || getChildren().isEmpty() ? y1 : getChildren().max(e -> e instanceof SpawnGroupBar ? e.getTop() : 0f).getTop());
-            for(int i = start / gap * gap; i < end; i += 1){
-                float cx = -camera.x + i * tileW;
-                if(cx < 0) continue;
-                float dx = cx + this.x;
-                Lines.dashLine(dx, y1, dx, y2, 60);
+            if(transform) applyTransform(computeTransform());
+            drawBackground();
 
-                float dy = this.y;
-                if(Mathf.mod(i, gap) == 0) font.draw(String.valueOf(i + 1), dx + tileW / 2f, dy + 12, Align.center);
-                if(search == i){
-                    Fill.rect(Tmp.r1.set(dx, dy, tileW, getHeight()));
-                }
-            }
-            font.setColor(Color.white);
-            Draw.reset();
-
-            applyTransform(computeTransform());
-            Draw.flush();
             if(clipBegin(0, Scl.scl(16f), getWidth(), getHeight())){
                 drawChildren();
                 Draw.flush();
                 clipEnd();
             }
-            resetTransform();
+            if(transform) resetTransform();
+        }
+
+        public void drawBackground(){
+            int gap = Mathf.ceil(100f / tileW);
+            Lines.stroke(4f);
+            Draw.color(Color.gray, 0.35f * parentAlpha);
+            Font font = Fonts.outline;
+            font.setColor(Color.gray);
+            float y1 = Math.max(16, -camera.y);
+            float y2 = Math.min(getHeight(), getChildren() == null || getChildren().isEmpty() ? y1 : getChildren().max(e -> e instanceof SpawnGroupBar ? e.getTop() : 0f).getTop());
+            for(int i = start / gap * gap; i < end; i += 1){
+                float cx = -camera.x + i * tileW;
+                if(cx < 0) continue;
+                Lines.dashLine(cx, y1, cx, y2, 60);
+
+                if(Mathf.mod(i, gap) == 0) font.draw(String.valueOf(i + 1), cx + tileW / 2f, 16, Align.center);
+                if(search == i){
+                    Fill.rect(Tmp.r1.set(cx, 0f, tileW, getHeight()));
+                }
+            }
+            font.setColor(Color.white);
+
+            if(tail < end){
+                float tx = tileX(tail);
+                Draw.color(Color.navy, 0.5f * parentAlpha);
+                Fill.rect(Tmp.r1.set(tx, 0f, getWidth() - tx, getHeight()));
+            }
+            Draw.reset();
         }
 
         public void locateWave(int wave){
@@ -905,6 +919,13 @@ public class MFEWaveInfoDialog extends BaseDialog{
         }
 
         public void cookStats(){
+            if(groups.isEmpty()){
+                tail = 10;
+            }else{
+                var g = groups.max(g2 -> g2.end != never ? Math.max(g2.end, g2.begin + g2.spacing) : g2.begin + g2.spacing);
+                tail = g.end != never ? Math.max(g.end, g.begin + g.spacing) : g.begin + g.spacing + 1;
+            }
+
             values = new int[end - start + 1][Vars.content.units().size];
             used.clear();
             max = maxTotal = 1;
@@ -1062,22 +1083,35 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 });
 
                 label(() -> String.valueOf(group.begin + 1));
-                add(new Table(t -> {
-                    image(group.type.uiIcon).size(32f).scaling(Scaling.fit);
+                table(t -> {
+                    var img = new Image(group.type.uiIcon);
+                    img.setScaling(Scaling.fit).setAlign(Align.left);
+                    var lt = new Table(ls -> {
+                        ls.label(() -> "" + group.unitAmount).growX().row();
+                        ls.label(() -> "+" + Strings.autoFixed(1f/group.unitScaling, 2)).fontScale(0.75f).growX();
+                    });
+                    stack(img, lt).height(32f).maxWidth(64f);
+
+                    img = new Image(Icon.defense);
+                    img.setColor(Pal.shield);
+                    img.setScaling(Scaling.fit).setAlign(Align.left);
+                    lt = new Table(ls -> {
+                        ls.label(() -> "" + UI.formatAmount((long)group.shields)).growX().labelAlign(Align.right).row();
+                        ls.label(() -> "+" + Strings.autoFixed(group.shieldScaling, 1)).growX().labelAlign(Align.right).fontScale(0.75f);
+                    });
+                    stack(img, lt).height(32f).maxWidth(64f);
+
                     if(group.effect != null) image(group.effect.uiIcon).size(32f).scaling(Scaling.fit);
+
                     if(group.items != null){
                         var label = new Label(String.valueOf(group.items.amount));
                         label.setAlignment(Align.bottomRight);
                         label.setFillParent(true);
-                        label.setFontScale(0.7f);
+                        label.setFontScale(0.75f);
                         stack(new Image(group.items.item.uiIcon).setScaling(Scaling.fit), label).size(32f);
                     }
+
                     label(() -> (group.payloads == null || group.payloads.isEmpty() ? "" : Iconc.itchio + "") + (group.spawn == -1 ? "" : Iconc.blockSpawn + ""));
-                }){
-                    @Override
-                    public float getPrefWidth(){
-                        return 1f;
-                    }
                 }).grow();
                 label(() -> group.end == SpawnGroup.never ? "∞" : String.valueOf(group.end + 1));
             }
@@ -1085,8 +1119,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
             @Override
             public void act(float delta){
                 super.act(delta);
-                setPosition(tileX(group.begin), -camera.y + tileH * index + 16f);
                 setSize(Mathf.clamp(tileX(group.end + (group.end == never ? 0 : 1)) - tileX(group.begin), getPrefWidth(), WaveCanvas.this.getWidth()), tileH - marginTop);
+                setPosition(Math.min(tileX(group.begin), WaveCanvas.this.getWidth() - getWidth()), -camera.y + tileH * index + 16f);
             }
 
             @Override
@@ -1103,8 +1137,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 Fill.rect(Tmp.r1.set(tileX(group.begin), y, tileX(group.end) + tileW - tileX(group.begin), tileH - marginTop).move(0f, -translation.y));
 
                 //spawning block
-                int start = getStartWave();
-                int end = getEndWave();
                 Draw.alpha(this.parentAlpha);
                 for(int i = group.begin; i <= group.end && i <= end; i += group.spacing){
                     if(i < start) continue;
@@ -1115,6 +1147,59 @@ public class MFEWaveInfoDialog extends BaseDialog{
             }
         }
 
+        public void screenshot(){
+            float scale = 0.6f;
+            int w = (end + 1) * (int)tileW, h = (groups.size + 1) * (int)tileH;
+            int memory = w * h / 1024 / 1024;
+
+            if(Vars.checkScreenshotMemory && memory >= (mobile ? 120 : 240)){
+                ui.showInfo("@screenshot.invalid");
+                return;
+            }
+
+            int pixw = (int)(w * scale), pixh = (int)(h * scale);
+            FrameBuffer buffer = new FrameBuffer(pixw, pixh);
+
+            Camera sceneCamera = getScene().getCamera();
+            float vpW = sceneCamera.width, vpH = sceneCamera.height;
+            Tmp.v6.set(sceneCamera.position);
+            sceneCamera.position.set(w / 2f, h / 2f);
+            sceneCamera.resize(w, h);
+
+            float cw = this.width, ch = this.height, cx = camera.x, cy = camera.y;
+            setSize(w, h);
+            camera.setZero();
+            vec.setZero();
+            start = 0;
+            act(0.1f);
+
+            buffer.begin();
+            Draw.proj().setOrtho(0,0, w, h);
+            Styles.black.draw(0f, 0f, w, h);
+            drawBackground();
+            drawChildren();
+            Draw.flush();
+            byte[] lines = ScreenUtils.getFrameBufferPixels(0, 0, pixw, pixh, true);
+            buffer.end();
+
+            sceneCamera.position.set(Tmp.v6);
+            sceneCamera.resize(vpW, vpH);
+            setSize(cw, ch);
+            camera.set(cx, cy);
+            buffer.dispose();
+
+            Threads.thread(() -> {
+                for(int i = 0; i < lines.length; i += 4){
+                    lines[i + 3] = (byte)255;
+                }
+                Pixmap fullPixmap = new Pixmap(pixw, pixh);
+                Buffers.copy(lines, 0, fullPixmap.pixels, lines.length);
+                Fi file = screenshotDirectory.child("screenshot-" + Time.millis() + ".png");
+                PixmapIO.writePng(file, fullPixmap);
+                fullPixmap.dispose();
+                Core.app.post(() -> ui.showInfoFade(Core.bundle.format("screenshot", file.toString())));
+            });
+        }
     }
 
     public enum Mode{
