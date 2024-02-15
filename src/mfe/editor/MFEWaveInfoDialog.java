@@ -50,6 +50,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
     UnitType filterType;
     int filterSpawn = -1;
     boolean reverseSort = false;
+    boolean detailedBar, barFillX;
 
     public MFEWaveInfoDialog(){
         super("@waves.title");
@@ -117,8 +118,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 groups = Waves.generate(1f / 10f);
                 buildGroups();
             }).width(150f);
-
-            buttons.button("Screenshot", () -> canvas.screenshot());
         }
     }
 
@@ -155,7 +154,25 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 shell.pane(t -> {
                     viewSettings = t;
                     t.background(Tex.button);
-                    t.margin(16f);
+                    t.margin(12f);
+
+                    t.add("@settings.graphics").height(40f).grow().row();
+
+                    t.table(graph -> {
+                        graph.defaults().growX().height(40f).pad(4f);
+
+                        graph.button("Detailed Bar", Styles.togglet, () -> {
+                            detailedBar = !detailedBar;
+                            buildGroups();
+                        }).row();
+
+                        graph.button("Bar Expand", Styles.togglet, () -> {
+                            barFillX = !barFillX;
+                        }).row();
+
+                        graph.button("@keybind.screenshot.name", () -> canvas.screenshot());
+                    }).growX().row();
+
                     t.add("@waveinfo.filters").height(40f).grow().row();
                     //boolean filters
                     t.table(gf -> {
@@ -313,9 +330,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
         if(reverseSort) groups.reverse();
     }
 
-    /**
-     * Rebuild group bars. Also rebuild config table.
-     */
+    /** Rebuild group bars. Also rebuild config table. */
     void buildGroups(){
         canvas.clearChildren();
 
@@ -1084,22 +1099,28 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                 label(() -> String.valueOf(group.begin + 1));
                 table(t -> {
-                    var img = new Image(group.type.uiIcon);
+                    Image img;
+                    Table lt;
+                    img = new Image(group.type.uiIcon);
                     img.setScaling(Scaling.fit).setAlign(Align.left);
-                    var lt = new Table(ls -> {
-                        ls.label(() -> "" + group.unitAmount).growX().row();
-                        ls.label(() -> "+" + Strings.autoFixed(1f/group.unitScaling, 2)).fontScale(0.75f).growX();
-                    });
-                    stack(img, lt).height(32f).maxWidth(64f);
+                    if(detailedBar){
+                        lt = new Table(ls -> {
+                            ls.label(() -> "" + group.unitAmount).growX().row();
+                            ls.label(() -> "+" + Strings.autoFixed(1f/group.unitScaling, 2)).fontScale(0.75f).growX();
+                        });
+                        stack(img, lt).height(32f).maxWidth(64f);
 
-                    img = new Image(Icon.defense);
-                    img.setColor(Pal.shield);
-                    img.setScaling(Scaling.fit).setAlign(Align.left);
-                    lt = new Table(ls -> {
-                        ls.label(() -> "" + UI.formatAmount((long)group.shields)).growX().labelAlign(Align.right).row();
-                        ls.label(() -> "+" + Strings.autoFixed(group.shieldScaling, 1)).growX().labelAlign(Align.right).fontScale(0.75f);
-                    });
-                    stack(img, lt).height(32f).maxWidth(64f);
+                        img = new Image(Icon.defense);
+                        img.setColor(Pal.shield);
+                        img.setScaling(Scaling.fit).setAlign(Align.left);
+                        lt = new Table(ls -> {
+                            ls.label(() -> "" + UI.formatAmount((long)group.shields)).growX().labelAlign(Align.right).row();
+                            ls.label(() -> "+" + Strings.autoFixed(group.shieldScaling, 1)).growX().labelAlign(Align.right).fontScale(0.75f);
+                        });
+                        stack(img, lt).height(32f).maxWidth(64f);
+                    }else{
+                        add(img);
+                    }
 
                     if(group.effect != null) image(group.effect.uiIcon).size(32f).scaling(Scaling.fit);
 
@@ -1119,15 +1140,20 @@ public class MFEWaveInfoDialog extends BaseDialog{
             @Override
             public void act(float delta){
                 super.act(delta);
-                setSize(Mathf.clamp(tileX(group.end + (group.end == never ? 0 : 1)) - tileX(group.begin), getPrefWidth(), WaveCanvas.this.getWidth()), tileH - marginTop);
-                setPosition(Math.min(tileX(group.begin), WaveCanvas.this.getWidth() - getWidth()), -camera.y + tileH * index + 16f);
+                if(barFillX){
+                    setSize(WaveCanvas.this.getWidth(), tileH);
+                    setPosition(tileX(start), -camera.y + tileH * index + 16f);
+                }else{
+                    setSize(Mathf.clamp(tileX(group.end + (group.end == never ? 0 : 1)) - tileX(group.begin), getPrefWidth(), WaveCanvas.this.getWidth()), tileH - marginTop);
+                    setPosition(Math.min(tileX(group.begin), WaveCanvas.this.getWidth() - getWidth()), -camera.y + tileH * index + 16f);
+                }
             }
 
             @Override
             protected void drawBackground(float x, float y){
                 boolean selected = selectedGroups.contains(group, true);
                 Tmp.c2.set(color);
-                color.set(Color.white).a(selected ? 1f : 0.3f);
+                color.set(Color.white).a(selected ? 0.7f : 0.25f);
                 super.drawBackground(x, y);
                 color.set(Tmp.c2);
 
@@ -1160,12 +1186,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
             int pixw = (int)(w * scale), pixh = (int)(h * scale);
             FrameBuffer buffer = new FrameBuffer(pixw, pixh);
 
-            Camera sceneCamera = getScene().getCamera();
-            float vpW = sceneCamera.width, vpH = sceneCamera.height;
-            Tmp.v6.set(sceneCamera.position);
-            sceneCamera.position.set(w / 2f, h / 2f);
-            sceneCamera.resize(w, h);
-
             float cw = this.width, ch = this.height, cx = camera.x, cy = camera.y;
             setSize(w, h);
             camera.setZero();
@@ -1176,14 +1196,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
             buffer.begin();
             Draw.proj().setOrtho(0,0, w, h);
             Styles.black.draw(0f, 0f, w, h);
-            drawBackground();
-            drawChildren();
+            draw();
             Draw.flush();
             byte[] lines = ScreenUtils.getFrameBufferPixels(0, 0, pixw, pixh, true);
             buffer.end();
 
-            sceneCamera.position.set(Tmp.v6);
-            sceneCamera.resize(vpW, vpH);
             setSize(cw, ch);
             camera.set(cx, cy);
             buffer.dispose();
