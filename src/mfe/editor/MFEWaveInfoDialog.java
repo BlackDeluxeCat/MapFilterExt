@@ -150,6 +150,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
             }).left().bottom(),
 
             new Table(shell -> {
+                shell.visible(() -> showViewSettings);
+                shell.button("@keybind.screenshot.name", () -> canvas.screenshot()).size(120f, 40f);
+            }).right().top(),
+
+            new Table(shell -> {
                 shell.visible(() -> showViewSettings && !showWaveGraph);
                 shell.pane(t -> {
                     viewSettings = t;
@@ -169,8 +174,6 @@ public class MFEWaveInfoDialog extends BaseDialog{
                         graph.button("Bar Expand", Styles.togglet, () -> {
                             barFillX = !barFillX;
                         }).row();
-
-                        graph.button("@keybind.screenshot.name", () -> canvas.screenshot());
                     }).growX().row();
 
                     t.add("@waveinfo.filters").height(40f).grow().row();
@@ -1088,9 +1091,9 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                 clicked(() -> {
                     if(!batchEditing){
-                        if(!selectedGroups.remove(group)) selectedGroups.clear().add(group);
+                        if(!selectedGroups.remove(group, true)) selectedGroups.clear().add(group);
                     }else{
-                        if(!selectedGroups.remove(group)) selectedGroups.add(group);
+                        if(!selectedGroups.remove(group, true)) selectedGroups.add(group);
                     }
                     buildConfig();
                 });
