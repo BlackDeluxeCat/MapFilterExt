@@ -1031,7 +1031,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
             static float marginTop = 4f;
             SpawnGroup group;
             int index;
-            boolean dragging;
+            boolean pressed;
 
             public SpawnGroupBar(SpawnGroup group, int i){
                 this.group = group;
@@ -1043,18 +1043,16 @@ public class MFEWaveInfoDialog extends BaseDialog{
 
                 this.addCaptureListener(new InputListener(){
                     float downx, downy;
-
                     @Override
                     public boolean touchDown(InputEvent event, float x, float y, int pointer, KeyCode button){
                         downx = x;
                         downy = y;
-                        dragging = true;
+                        pressed = true;
                         return true;
                     }
 
                     @Override
                     public void touchDragged(InputEvent event, float x, float y, int pointer){
-                        selectedGroups.clear();
                         buildConfig();
                         setTranslation((x - downx) + translation.x, (y - downy) + translation.y);
                         super.touchDragged(event, x, y, pointer);
@@ -1083,8 +1081,8 @@ public class MFEWaveInfoDialog extends BaseDialog{
                             }
                         }
 
+                        pressed = false;
                         setTranslation(0f, 0f);
-                        dragging = false;
                     }
                 });
 
@@ -1158,7 +1156,7 @@ public class MFEWaveInfoDialog extends BaseDialog{
                 color.set(Tmp.c2);
 
                 //spacing block
-                Draw.color(selected ? Pal.accent : dragging ? Color.royal : color);
+                Draw.color(selected ? Pal.accent : pressed ? Color.royal : color);
                 Draw.alpha(0.6f * parentAlpha);
                 Fill.rect(Tmp.r1.set(tileX(group.begin), y, tileX(group.end) + tileW - tileX(group.begin), tileH - marginTop).move(0f, -translation.y));
 
