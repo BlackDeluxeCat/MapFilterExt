@@ -71,23 +71,23 @@ public class BaseGuide{
                     .update(b -> b.getLabel().setColor(color)).size(buttonSize).pad(2f);
 
             title.button("" + Iconc.up, Styles.flatt, () -> {
-                int self = guides.indexOf(this);
-                int tgt = Mathf.clamp(self - 1, 0, guides.size - 1);
-                guides.swap(self, tgt);
-                rebuild();
+                int self = guidesImage.guides.indexOf(this);
+                int tgt = Mathf.clamp(self - 1, 0, guidesImage.guides.size - 1);
+                guidesImage.guides.swap(self, tgt);
+                guidesImage.cfgPop.setNeedsRebuild();
             }).size(buttonSize).pad(2f);
 
             title.button("" + Iconc.down, Styles.flatt, () -> {
-                int self = guides.indexOf(this);
-                int tgt = Mathf.clamp(self + 1, 0, guides.size - 1);
-                guides.swap(self, tgt);
-                rebuild();
+                int self = guidesImage.guides.indexOf(this);
+                int tgt = Mathf.clamp(self + 1, 0, guidesImage.guides.size - 1);
+                guidesImage.guides.swap(self, tgt);
+                guidesImage.cfgPop.setNeedsRebuild();
             }).size(buttonSize).pad(2f);
 
             title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + Core.bundle.get(name.substring(1)) + " ?", () -> {
                 onRemove();
-                guides.remove(this);
-                rebuild();
+                guidesImage.guides.remove(this);
+                guidesImage.cfgPop.setNeedsRebuild();
             })).size(buttonSize).pad(2f).get().getLabel().setColor(Color.scarlet);
         }).growX();
 

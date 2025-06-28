@@ -18,7 +18,7 @@ import mindustry.gen.*;
 import mindustry.ui.*;
 
 import static mfe.MapFilterExt.*;
-import static mfe.guides.GuideSeqImage.cancelScroll;
+import static mfe.guides.GuideSeqImage.guidesImage;
 import static mindustry.Vars.*;
 
 public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
@@ -328,7 +328,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
             public void pan(InputEvent event, float x, float y, float deltaX, float deltaY){
                 super.pan(event, x, y, deltaX, deltaY);
                 if(!e.isVar()) return;
-                cancelScroll();
+                guidesImage.cfgPop.cancelScroll();
                 e.parse(Mathf.floor(e.get() + deltaX / 2f * step));
                 f.setText(String.valueOf(e.get()));
                 graphChanged = true;

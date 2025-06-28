@@ -112,13 +112,11 @@ public class MFEWaveInfoDialog extends BaseDialog{
             dialog.show();
         }).size(250f, 64f);
 
-        if(experimental){
-            buttons.button(Core.bundle.get("waves.random"), Icon.refresh, () -> {
-                groups.clear();
-                groups = Waves.generate(1f / 10f);
-                buildGroups();
-            }).width(150f);
-        }
+        buttons.button(Core.bundle.get("waves.random"), Icon.refresh, () -> {
+            groups.clear();
+            groups = Waves.generate(1f / 10f);
+            buildGroups();
+        }).width(150f);
     }
 
     void setup(){

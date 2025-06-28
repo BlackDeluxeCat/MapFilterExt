@@ -6,17 +6,18 @@ import arc.math.*;
 import arc.struct.*;
 import arc.util.*;
 import arc.util.serialization.*;
-import mi2.utils.*;
 import mindustry.gen.*;
 import mindustry.io.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
+import mt.utils.*;
 
 import static mfe.MapFilterExt.*;
+import static mfe.guides.GuideSeqImage.guidesImage;
 import static mindustry.Vars.*;
 
 public class GuideSchematics{
-    public static StringMap schematics = new StringMap();
+    public static StringMap schematics;
     public static String prefix = "Sche-";
     public static BaseDialog schematicsDialog;
 
@@ -27,13 +28,14 @@ public class GuideSchematics{
     }
 
     public static void save(){
-        schematics.each((name, sche) -> config.putstr(prefix + name, sche));
+        setting.putJson("guideSchematics", schematics);
     }
 
     public static void load(){
+        schematics = setting.getJson("guideSchematics", StringMap.class, StringMap::new);
         JsonValue cfg = RefUtils.getValue(config, "cfg");
         for(JsonValue jv : cfg){
-            if(jv.name.startsWith(prefix)){
+            if(jv.name.startsWith(prefix) && !schematics.containsKey(jv.name.substring(prefix.length()))){
                 schematics.put(jv.name.substring(prefix.length()), jv.asString());
             }
         }
@@ -42,7 +44,7 @@ public class GuideSchematics{
     public static void rebuild(){
         schematicsDialog.cont.clear();
         schematicsDialog.cont.button(Iconc.save + Core.bundle.get("guide.schematic.new"), Styles.flatBordert, () -> {
-            if(GuideSeqImage.guides.isEmpty()){
+            if(guidesImage.guides.isEmpty()){
                 ui.showInfoFade("@guide.schematic.emptyguide", 10f);
                 return;
             }
@@ -50,11 +52,11 @@ public class GuideSchematics{
                 boolean replacement = schematics.containsKey(text);
                 if(replacement){
                     ui.showConfirm("@confirm", "@schematic.replace", () -> {
-                        schematics.put(text, JsonIO.write(GuideSeqImage.guides));
+                        schematics.put(text, JsonIO.write(guidesImage.guides));
                         ui.showInfoFade("@schematic.saved");
                     });
                 }else{
-                    schematics.put(text, JsonIO.write(GuideSeqImage.guides));
+                    schematics.put(text, JsonIO.write(guidesImage.guides));
                     ui.showInfoFade("@schematic.saved");
                 }
                 rebuild();
@@ -79,9 +81,9 @@ public class GuideSchematics{
 
                         tt.button("" + Iconc.paste, Styles.flatBordert, () -> {
                             try{
-                                GuideSeqImage.clearGuides();
-                                GuideSeqImage.guides.set(JsonIO.read(Seq.class, sche));
-                                GuideSeqImage.rebuild();
+                                guidesImage.clearGuides();
+                                guidesImage.guides.set(JsonIO.read(Seq.class, sche));
+                                guidesImage.cfgPop.setNeedsRebuild();
                                 schematicsDialog.hide();
                             }catch(Throwable e){
                                 ui.showException(e);
@@ -90,8 +92,8 @@ public class GuideSchematics{
                         }).size(buttonSize);
                         tt.button("" + Iconc.paste, Styles.flatBordert, () -> {
                             try{
-                                GuideSeqImage.guides.add(JsonIO.read(Seq.class, sche));
-                                GuideSeqImage.rebuild();
+                                guidesImage.guides.add(JsonIO.read(Seq.class, sche));
+                                guidesImage.cfgPop.setNeedsRebuild();
                                 schematicsDialog.hide();
                             }catch(Throwable e){
                                 ui.showException(e);
