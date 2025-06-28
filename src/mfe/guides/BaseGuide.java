@@ -11,23 +11,24 @@ import arc.util.*;
 import mindustry.*;
 import mindustry.gen.*;
 import mindustry.ui.*;
+import mt.ui.*;
 
 import static mfe.MapFilterExt.*;
 import static mfe.guides.GuideSeqImage.*;
 
 public class BaseGuide{
-    public transient String name;
+    public static final Rect drawRect = new Rect(), tileRect = new Rect();
+    public String name = "";
     public Color color = new Color(Color.salmon).a(0.5f);
     public Vec2 off = new Vec2();
     public float rotDegree = 0f;
     public boolean enable = true, axis = false;
-    public transient Table buttons = new Table();
-    public static final Rect drawRect = new Rect(), tileRect = new Rect();
+    public transient Table cfgButtons = new Table();
+    public transient boolean minimized = false, transChanged;
 
     public BaseGuide(){
         name = "BaseDebug";
-        buttons.background(Styles.black3);
-        buttons.defaults().size(buttonSize).pad(2f);
+        cfgButtons.defaults().size(buttonSize).pad(2f);
     }
 
     public void draw(){
@@ -52,61 +53,71 @@ public class BaseGuide{
 
     public void buildConfigure(Table table){
         table.clear();
-        table.background(Styles.flatOver);
+        table.background(Styles.flatOver).defaults().pad(2f);
+
         table.image().fillX().color(Color.white).height(2f);
+
         table.row();
-        table.defaults().padLeft(4f).padRight(4f);
 
         table.table(title -> {
-            title.background(Styles.black);
-            title.button(name, titleTogglet, () -> enable = !enable).grow().pad(2f).with(b -> {
-                b.update(() -> b.getLabel().setColor(color.r, color.g, color.b, color.a * (enable ? 1f : 0.5f)));
-            }).checked(enable).minWidth(200f);
-            title.label(() -> "" + (enable ? Iconc.eye : Iconc.eyeOff)).size(0.5f,10f).with(l -> {
-                l.setColor(1f,1f,1f,0.3f);
-                l.setAlignment(Align.right);
-            });
-
-            title.button("" + Iconc.pick, Styles.flatt, () -> Vars.ui.picker.show(color, true, c -> color.set(c)))
-                    .update(b -> b.getLabel().setColor(color)).size(buttonSize).pad(2f);
+            title.background(Styles.black).defaults().pad(2f).height(buttonSize);
 
             title.button("" + Iconc.up, Styles.flatt, () -> {
                 int self = guidesImage.guides.indexOf(this);
                 int tgt = Mathf.clamp(self - 1, 0, guidesImage.guides.size - 1);
                 guidesImage.guides.swap(self, tgt);
                 guidesImage.cfgPop.setNeedsRebuild();
-            }).size(buttonSize).pad(2f);
+            }).size(buttonSize);
 
             title.button("" + Iconc.down, Styles.flatt, () -> {
                 int self = guidesImage.guides.indexOf(this);
                 int tgt = Mathf.clamp(self + 1, 0, guidesImage.guides.size - 1);
                 guidesImage.guides.swap(self, tgt);
                 guidesImage.cfgPop.setNeedsRebuild();
-            }).size(buttonSize).pad(2f);
+            }).size(buttonSize);
+
+            title.button(b -> b.label(() -> (minimized ? Iconc.downOpen : Iconc.upOpen) + ""), Styles.flatt, () -> minimized = !minimized).size(buttonSize);
+
+            title.button(b -> b.image().size(buttonSize).update(i -> i.setColor(color)), Styles.flati, () -> Vars.ui.picker.show(color, true, c -> color.set(c))).size(buttonSize);
 
             title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + Core.bundle.get(name.substring(1)) + " ?", () -> {
                 onRemove();
                 guidesImage.guides.remove(this);
                 guidesImage.cfgPop.setNeedsRebuild();
-            })).size(buttonSize).pad(2f).get().getLabel().setColor(Color.scarlet);
+            })).size(buttonSize).get().getLabel().setColor(Color.scarlet);
+
+            title.button("" + Iconc.edit, Styles.flatt, () -> Vars.ui.showTextInput("", "New Name: ", name, str -> name = str)).size(buttonSize);
+
+            title.button(b -> b.label(() -> (enable ? "[accent]" + Iconc.eye : ("[gray]" + Iconc.eyeOff)) + name).growX().labelAlign(Align.left), Styles.cleart, () -> enable = !enable).grow().minWidth(50f);
         }).growX();
 
         table.row();
 
-        table.add(buttons).left().fill();
-
-        table.row();
-
-        table.table(this::buildContent).fill().get().background(Styles.black6);
+        table.add(new MCollapser(t -> {
+            t.background(Styles.black5);
+            t.add(cfgButtons).left();
+            t.row();
+            t.table(tt -> buildTransConfigure(tt)).left();
+            t.row();
+            t.table(this::buildContent).growX().get().background(Styles.black6);
+        }, minimized).setCollapsed(true, () -> minimized).setDirection(true, true)).growX();
     }
 
     /** Add offset fields */
-    public void buildOffsetConfigure(Table table, Runnable changed){
+    public void buildTransConfigure(Table table){
         table.background(Styles.black3);
-        addDragableFloatInput.get(x -> {off.x = x; if(changed != null) changed.run();}, () -> off.x, table.add(Iconc.move + "dx").get(), table.add(new TextField()).size(110f, 18f).get());
-        addDragableFloatInput.get(r -> {rotDegree = r; if(changed != null) changed.run();}, () -> rotDegree, table.add(Iconc.rotate + "rot").get(), table.add(new TextField()).size(110f, 18f).get());
-        table.row();
-        addDragableFloatInput.get(y -> {off.y = y; if(changed != null) changed.run();}, () -> off.y, table.add(Iconc.move + "dy").get(), table.add(new TextField()).size(110f, 18f).get());
+        addDragableFloatInput.get(x -> {
+            off.x = x;
+            transChanged = true;
+            }, () -> off.x, table.add(Iconc.move + "dx").get(), table.add(new TextField()).size(80f, 18f).get());
+        addDragableFloatInput.get(y -> {
+            off.y = y;
+            transChanged = true;
+        }, () -> off.y, table.add(Iconc.move + "dy").get(), table.add(new TextField()).size(80f, 18f).get());
+        addDragableFloatInput.get(r -> {
+            rotDegree = r;
+            transChanged = true;
+            }, () -> rotDegree, table.add(Iconc.rotate + "rot").get(), table.add(new TextField()).size(80f, 18f).get());
     }
 
     public void buildContent(Table table){}

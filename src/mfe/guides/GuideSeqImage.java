@@ -65,14 +65,13 @@ public class GuideSeqImage extends GridImage{
             buildSelect();
             build();
             rebuildList();
-            setTransform(true);
         }
 
         public void inject(){
             var view = ui.editor.getView();
             RefUtils.setValue(view, "image", guidesImage);
             view.parent.addChild(this);
-            setPositionInScreen(Core.graphics.getWidth()/2f, Core.graphics.getHeight()/2f);
+            setPositionInScreen(0, 0);
             shown = true;
         }
 
@@ -81,13 +80,9 @@ public class GuideSeqImage extends GridImage{
             table(tit -> {
                 tit.setBackground(Styles.black3);
                 tit.margin(2f);
-                tit.add("" + Iconc.move).size(buttonSize).with(this::addDragPopupListener).labelAlign(Align.center);
-                tit.button(b -> {
-                    b.label(() -> (minimize ? "[gray]" : "[accent]") + "MFE Guides");
-                }, Styles.nonet, () -> {
-                    minimize = !minimize;
-                }).grow().height(buttonSize);
+                tit.add(" " + Iconc.move + " MFE Guides").with(this::addDragPopupListener).height(buttonSize).growX();
                 tit.label(() -> "Mem:" + (int)(Core.app.getJavaHeap() / 1024 / 1024)).color(Tmp.c1.set(Color.green).a(0.7f)).style(Styles.outlineLabel).width(0.5f).fontScale(0.7f).labelAlign(Align.bottomRight).fill();
+                tit.button(b -> b.label(() -> (minimize ? Iconc.downOpen : Iconc.upOpen) + ""), Styles.cleart, () -> minimize = !minimize).size(buttonSize);
 
                 tit.button("" + Iconc.add, Styles.cleart, () -> selectDialog.show()).size(buttonSize);
 
@@ -125,7 +120,7 @@ public class GuideSeqImage extends GridImage{
                 })).size(buttonSize).with(tb -> tb.getLabel().setColor(Color.scarlet));
 
                 tit.button("" + Iconc.list, Styles.cleart, () -> GuideSchematics.schematicsDialog.show()).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "打开图像蓝图库"));
-            });
+            }).growX();
 
             row();
 
@@ -138,8 +133,8 @@ public class GuideSeqImage extends GridImage{
                             Core.scene.setScrollFocus(ui.editor.getView());
                         }
                     });
-                });
-            }, minimize).setCollapsed(true, () -> minimize)).maxSize(400f, 500f);
+                }).growX().left();
+            }, minimize).setCollapsed(true, () -> minimize)).maxSize(400f, 500f).growX();
         }
 
         public void setNeedsRebuild(){

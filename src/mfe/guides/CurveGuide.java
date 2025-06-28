@@ -1,5 +1,6 @@
 package mfe.guides;
 
+import arc.*;
 import arc.func.*;
 import arc.graphics.*;
 import arc.math.*;
@@ -9,15 +10,11 @@ import arc.scene.ui.layout.*;
 public class CurveGuide extends ExpressionGuide{
     public CurveGuide(){
         super();
-        name = "@guide.curve";
+        name = Core.bundle.get("guide.curve");
     }
 
     @Override
     public void buildContent(Table table){
-        table.table(t -> buildOffsetConfigure(t, () -> graphChanged = true));
-
-        table.row();
-
         table.table(tline -> {
             tline.add("C(x,y): ");
             if(exp.expression.length() == 0) exp.parse("x - y", this);

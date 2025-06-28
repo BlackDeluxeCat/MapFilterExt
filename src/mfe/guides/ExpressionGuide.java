@@ -45,19 +45,12 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     public ExpressionGuide(){
         varx = new Expression("x");
         vary = new Expression("y");
-        name = "@guide.expression";
+        name = Core.bundle.get("guide.expression");
 
         expsTable = new Table();
 
-        buttons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis).name("axis");
-        buttons.button(polar ? uiCoordsysPolar : uiCoordsysRect, Styles.flati, buttonSize, () -> {}).with(b -> {
-            b.clicked(() -> {
-                polar = !polar;
-                b.getStyle().imageUp = (polar ? uiCoordsysPolar : uiCoordsysRect);
-                graphChanged = true;
-            });
-        }).name("polar");
-        buttons.button(detailGraph ? uiStep025 : uiStep05, Styles.flati, buttonSize, () -> {}).with(b -> {
+        cfgButtons.button("" + Iconc.move, titleTogglet, () -> axis = !axis).checked(axis).name("axis");
+        cfgButtons.button(detailGraph ? uiStep025 : uiStep05, Styles.flati, buttonSize, () -> {}).with(b -> {
             b.clicked(() -> {
                 detailGraph = !detailGraph;
                 drawStep = detailGraph ? 0.25f : 0.5f;
@@ -65,14 +58,23 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
                 graphChanged = true;
             });
         }).name("detailStep");
-        buttons.button(centerStroke ? uiStrokeCenter : uiStrokeAdd, Styles.flati, buttonSize, () -> {}).with(b -> {
+        cfgButtons.button(centerStroke ? uiStrokeCenter : uiStrokeAdd, Styles.flati, buttonSize, () -> {}).with(b -> {
             b.clicked(() -> {
                 centerStroke = !centerStroke;
                 b.getStyle().imageUp = (centerStroke ? uiStrokeCenter : uiStrokeAdd);
                 graphChanged = true;
             });
         }).name("centerStroke");
-        buttons.button("" + Iconc.fill, Styles.flatt, () -> ui.showConfirm("Fill with " + editor.drawBlock.localizedName + " ?", this::fill)).name("fill");
+        cfgButtons.image().growY().width(2f);
+        cfgButtons.button(polar ? uiCoordsysPolar : uiCoordsysRect, Styles.flati, buttonSize, () -> {}).with(b -> {
+            b.clicked(() -> {
+                polar = !polar;
+                b.getStyle().imageUp = (polar ? uiCoordsysPolar : uiCoordsysRect);
+                graphChanged = true;
+            });
+        }).name("polar");
+        cfgButtons.image().growY().width(2f);
+        cfgButtons.button("" + Iconc.fill, Styles.flatt, () -> ui.showConfirm("Fill with " + editor.drawBlock.localizedName + " ?", this::fill)).name("fill");
     }
 
     @Override
@@ -174,8 +176,8 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     }
 
     @Override
-    public void buildOffsetConfigure(Table table, Runnable changed){
-        super.buildOffsetConfigure(table, changed);
+    public void buildTransConfigure(Table table){
+        super.buildTransConfigure(table);
 
         table.row();
 
@@ -189,10 +191,6 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
     @Override
     public void buildContent(Table table){
-        table.table(t -> buildOffsetConfigure(t, () -> graphChanged = true));
-
-        table.row();
-
         table.table(tline -> {
             tline.add("f(x)=");
             if(exp.expression.length() == 0) exp.parse("x", this);
@@ -248,11 +246,15 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
         });
     }
 
+    /**
+     * 高性能消耗, 请避免调用. 如果图像变化, 设置{@code graphChanged}为true.
+     */
     public void updGraph(){
-        float step = drawStep;
-        if(!graphChanged) return;
+        if(!graphChanged && !transChanged) return;
         if(!timer.get(10f)) return;
+        float step = drawStep;
         graphChanged = false;
+        transChanged = false;
 
         if(image == null) image = new Pixmap((int)(getIW() / step), (int)(getIH() / step));
         if(image.width != (int)(getIW() / step) || image.height != (int)(getIH() / step)){
