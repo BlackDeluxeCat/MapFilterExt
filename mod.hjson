@@ -4,7 +4,7 @@ author: "BlackDeluxeCat"
 
 main: "mfe.MapFilterExt"
 
-version: 1.7.6b
+version: 1.8.0
 minGameVersion: 149
 java: true
 hidden: true
