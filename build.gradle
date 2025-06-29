@@ -32,7 +32,7 @@ allprojects{
 dependencies{
     compileOnly "com.github.anuken.arc:arc-core:$mindustryVersion"
     compileOnly ("com.github.anuken.mindustry:core:$mindustryVersion") { exclude module: 'flabel' }
-    compileOnly "com.github.BlackDeluxeCat:MiTour-Lib:$libVersion"
+    implementation "com.github.BlackDeluxeCat:MiTour-Lib:$libVersion"
     annotationProcessor "com.github.Anuken:jabel:$jabelVersion"
 }
 
