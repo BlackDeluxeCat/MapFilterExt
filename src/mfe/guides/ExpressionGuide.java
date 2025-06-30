@@ -32,7 +32,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     protected transient Texture texture;
     protected transient TextureRegion region;
 
-    public boolean detailGraph = true, centerStroke = true, polar = false;
+    public boolean detailGraph = false, centerStroke = true, polar = false;
     protected static final IntSeq tilesSort = new IntSeq();
 
     /**Handle vars.*/
@@ -136,7 +136,7 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
 
         editor.flushOp();
     }
-
+    /** 图像上一点对应的曲线表达式y值、线宽表达式y值、图格坐标y值 */
     protected transient Vec2 pcur = new Vec2(), pstk = new Vec2(), ptile = new Vec2(), pcps = new Vec2();
     protected transient Rect line = new Rect();
     /**Project tile view to graph and check whether each point is close to curve and should invoke the consumer or not.*/
@@ -252,17 +252,16 @@ public class ExpressionGuide extends BaseGuide implements ExpressionHandler{
     public void updGraph(){
         if(!graphChanged && !transChanged) return;
         if(!timer.get(10f)) return;
-        float step = drawStep;
         graphChanged = false;
         transChanged = false;
 
-        if(image == null) image = new Pixmap((int)(getIW() / step), (int)(getIH() / step));
-        if(image.width != (int)(getIW() / step) || image.height != (int)(getIH() / step)){
+        if(image == null) image = new Pixmap((int)(getIW() / drawStep), (int)(getIH() / drawStep));
+        if(image.width != (int)(getIW() / drawStep) || image.height != (int)(getIH() / drawStep)){
             image.dispose();
-            image = new Pixmap((int)(getIW() / step), (int)(getIH() / step));
+            image = new Pixmap((int)(getIW() / drawStep), (int)(getIH() / drawStep));
         }
         image.fill(Color.clear);
-        consTiles(p -> image.set((int)(p.x / step), image.height - (int)(p.y / step) - 1, Color.whiteRgba), step);
+        consTiles(p -> image.set((int)(p.x / drawStep), image.height - (int)(p.y / drawStep) - 1, Color.whiteRgba), drawStep);
 
         if(texture != null) texture.dispose();
         texture = new Texture(image);

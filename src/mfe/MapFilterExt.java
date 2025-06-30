@@ -44,9 +44,12 @@ public class MapFilterExt extends Mod{
 
             initStyles();
             initGuideClassJsonIO();
-            setting = new SettingHandler("MFE");
             SettingHandler.registerJsonClass(BaseGuide.class, VanillaGridGuide.class, ExpressionGuide.class, CurveGuide.class);
             config = ConfigHandler.request(this);
+
+            setting = new SettingHandler("MFE");
+            setting.checkPref("cacheGraphsToMapTags", false);
+
             addFilters();
             GuideSchematics.load();
 
