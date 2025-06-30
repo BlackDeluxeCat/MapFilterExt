@@ -18,7 +18,6 @@ import static mindustry.Vars.*;
 
 public class GuideSchematics{
     public static StringMap schematics;
-    public static String prefix = "Sche-";
     public static BaseDialog schematicsDialog;
 
     static{
@@ -33,12 +32,6 @@ public class GuideSchematics{
 
     public static void load(){
         schematics = setting.getJson("guideSchematics", StringMap.class, StringMap::new);
-        JsonValue cfg = RefUtils.getValue(config, "cfg");
-        for(JsonValue jv : cfg){
-            if(jv.name.startsWith(prefix) && !schematics.containsKey(jv.name.substring(prefix.length()))){
-                schematics.put(jv.name.substring(prefix.length()), jv.asString());
-            }
-        }
     }
 
     public static void rebuild(){

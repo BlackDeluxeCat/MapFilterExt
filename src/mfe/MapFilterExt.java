@@ -20,7 +20,6 @@ import mindustry.maps.filters.*;
 import mindustry.mod.*;
 import mindustry.ui.*;
 import mt.io.*;
-import mt.setting.*;
 import mt.utils.*;
 
 import java.util.*;
@@ -32,7 +31,6 @@ import static mindustry.Vars.ui;
 public class MapFilterExt extends Mod{
     public static float buttonSize = 32f;
     public static float step = 1f;
-    public static ConfigHandler config;
     public static SettingHandler setting;
 
     public MapFilterExt(){
@@ -43,9 +41,7 @@ public class MapFilterExt extends Mod{
             }
 
             initStyles();
-            initGuideClassJsonIO();
             SettingHandler.registerJsonClass(BaseGuide.class, VanillaGridGuide.class, ExpressionGuide.class, CurveGuide.class);
-            config = ConfigHandler.request(this);
 
             setting = new SettingHandler("MFE");
             setting.checkPref("cacheGraphsToMapTags", false);
@@ -87,14 +83,6 @@ public class MapFilterExt extends Mod{
         GenerateFilter ins = filter.get();
         SettingHandler.registerJsonClass(ins.getClass());
         JsonIO.json.addClassTag(Strings.camelize(ins.getClass().getSimpleName().replace("Filter", "")), ins.getClass());
-    }
-
-    @Deprecated
-    public static void initGuideClassJsonIO(){
-        JsonIO.json.addClassTag(BaseGuide.class.getSimpleName(), BaseGuide.class);
-        JsonIO.json.addClassTag(ExpressionGuide.class.getSimpleName(), ExpressionGuide.class);
-        JsonIO.json.addClassTag(VanillaGridGuide.class.getSimpleName(), VanillaGridGuide.class);
-        JsonIO.json.addClassTag(CurveGuide.class.getSimpleName(), CurveGuide.class);
     }
 
     public static TextButton.TextButtonStyle titleTogglet;
