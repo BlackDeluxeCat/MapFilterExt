@@ -1,11 +1,12 @@
 package mfe.guides;
 
+import arc.*;
 import arc.graphics.*;
 import arc.graphics.g2d.*;
 
 public class VanillaGridGuide extends BaseGuide{
     public VanillaGridGuide(){
-        name = "@guide.vanilla";
+        name = Core.bundle.get("guide.vanilla");
         color.set(Color.gray);
     }
 

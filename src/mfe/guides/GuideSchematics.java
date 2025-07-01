@@ -5,12 +5,10 @@ import arc.graphics.*;
 import arc.math.*;
 import arc.struct.*;
 import arc.util.*;
-import arc.util.serialization.*;
 import mindustry.gen.*;
 import mindustry.io.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
-import mt.utils.*;
 
 import static mfe.MapFilterExt.*;
 import static mfe.guides.GuideSeqImage.guidesImage;
