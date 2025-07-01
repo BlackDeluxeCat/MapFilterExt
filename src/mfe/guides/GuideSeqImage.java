@@ -11,6 +11,7 @@ import mindustry.gen.*;
 import mindustry.io.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
+import mt.*;
 import mt.ui.*;
 import mt.utils.*;
 
@@ -55,7 +56,7 @@ public class GuideSeqImage extends GridImage{
     }
 
     public class GuideListPop extends MPopup{
-        public BaseDialog selectDialog = new BaseDialog("@guide.adddialog");
+        public BaseDialog selectDialog = new BaseDialog("@guide.addgraph");
         protected ScrollPane paneList;
         public boolean needsRebuild = true;
         public boolean minimize = false;
@@ -73,6 +74,7 @@ public class GuideSeqImage extends GridImage{
             view.parent.addChild(this);
             setPositionInScreen(0, 0);
             shown = true;
+            rebuildList();
         }
 
         public void build(){
@@ -80,51 +82,68 @@ public class GuideSeqImage extends GridImage{
             table(tit -> {
                 tit.setBackground(Styles.black3);
                 tit.margin(2f);
-                tit.add(" " + Iconc.move + " MFE Guides").with(this::addDragPopupListener).height(buttonSize).growX();
+                tit.add(" " + Iconc.move + " MFE Graph").with(this::addDragPopupListener).height(buttonSize).growX();
                 tit.label(() -> "Mem:" + (int)(Core.app.getJavaHeap() / 1024 / 1024)).color(Tmp.c1.set(Color.green).a(0.7f)).style(Styles.outlineLabel).width(0.5f).fontScale(0.7f).labelAlign(Align.bottomRight).fill();
                 tit.button(b -> b.label(() -> (minimize ? Iconc.downOpen : Iconc.upOpen) + ""), Styles.cleart, () -> minimize = !minimize).size(buttonSize);
-
-                tit.button("" + Iconc.add, Styles.cleart, () -> selectDialog.show()).size(buttonSize);
-
-                tit.button("" + Iconc.copy, Styles.cleart, () -> Core.app.setClipboardText(JsonIO.write(guides))).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "导出到剪切板"));;
-
-                tit.button("" + Iconc.paste, Styles.cleart, () -> {
-                    try{
-                        clearGuides();
-                        guides.set(JsonIO.read(Seq.class, Core.app.getClipboardText()));
-                        setNeedsRebuild();
-                    }catch(Throwable e){
-                        ui.showException(e);
-                        Log.err(e);
-                    }
-                }).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "清空并导入剪切板"));;
-
-                tit.button("" + Iconc.paste, Styles.cleart, () -> {
-                    try{
-                        guides.add(JsonIO.read(Seq.class, Core.app.getClipboardText()));
-                        setNeedsRebuild();
-                    }catch(Throwable e){
-                        ui.showException(e);
-                        Log.err(e);
-                    }
-                }).size(buttonSize).with(tb -> {
-                    tb.add("+").color(Color.green).style(Styles.outlineLabel).width(0.1f).with(l -> {
-                        l.setAlignment(Align.bottomRight);
-                        l.setFontScale(0.75f);
-                    }).fillY();
-                }).with(tb -> UIUtils.tooltip(tb, "在末尾导入剪切板"));
-
-                tit.button("" + Iconc.cancel, Styles.cleart, () -> ui.showConfirm("确定清除所有图像吗?", () -> {
-                    clearGuides();
-                    setNeedsRebuild();
-                })).size(buttonSize).with(tb -> tb.getLabel().setColor(Color.scarlet));
-
-                tit.button("" + Iconc.list, Styles.cleart, () -> GuideSchematics.schematicsDialog.show()).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "打开图像蓝图库"));
             }).growX();
 
             row();
 
             add(new MCollapser(t -> {
+                t.setBackground(Styles.black3);
+                t.table(tit -> {
+                    tit.margin(2f);
+
+                    tit.button("" + Iconc.add, Styles.cleart, () -> selectDialog.show()).size(buttonSize);
+
+                    tit.button("" + Iconc.copy, Styles.cleart, () -> Core.app.setClipboardText(JsonIO.write(guides))).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "@guide.exportclipboard"));;
+
+                    tit.button("" + Iconc.paste, Styles.cleart, () -> {
+                        try{
+                            clearGuides();
+                            guides.set(JsonIO.read(Seq.class, Core.app.getClipboardText()));
+                            setNeedsRebuild();
+                        }catch(Throwable e){
+                            ui.showException(e);
+                            Log.err(e);
+                        }
+                    }).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "@guide.importclipboardclean"));;
+
+                    tit.button("" + Iconc.paste, Styles.cleart, () -> {
+                        try{
+                            guides.add(JsonIO.read(Seq.class, Core.app.getClipboardText()));
+                            setNeedsRebuild();
+                        }catch(Throwable e){
+                            ui.showException(e);
+                            Log.err(e);
+                        }
+                    }).size(buttonSize).with(tb -> {
+                        tb.add("+").color(Color.green).style(Styles.outlineLabel).width(0.1f).with(l -> {
+                            l.setAlignment(Align.bottomRight);
+                            l.setFontScale(0.75f);
+                        }).fillY();
+                    }).with(tb -> UIUtils.tooltip(tb, "@guide.importclipboardtail"));
+
+                    tit.button("" + Iconc.trash, Styles.cleart, () -> ui.showConfirm("@guide.cleanconfirm", () -> {
+                        clearGuides();
+                        setNeedsRebuild();
+                    })).size(buttonSize).with(tb -> tb.getLabel().setColor(Color.scarlet));
+
+                    tit.image().color(Tmp.c1.set(Color.gray).a(0.5f)).growY().width(2f).pad(0, 8, 0, 8);
+
+                    tit.button("" + Iconc.list, Styles.cleart, () -> GuideSchematics.schematicsDialog.show()).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "@guide.schematics"));
+
+                    tit.image().color(Tmp.c1.set(Color.gray).a(0.5f)).growY().width(2f).pad(0, 8, 0, 8);
+
+                    tit.button("" + Iconc.fileText, Styles.cleart, () -> guidesImage.guides.set(JsonIO.read(Seq.class, editor.tags.get("MFE.Graphs")))).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "@guide.maptag.read")).disabled(tb -> !editor.tags.containsKey("MFE.Graphs"));
+
+                    tit.button("" + Iconc.save, Styles.cleart, () -> editor.tags.put("MFE.Graphs", JsonIO.write(guidesImage.guides))).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "@guide.maptag.write"));
+
+                    tit.button("" + Iconc.trash, Styles.cleart, () -> editor.tags.remove("MFE.Graphs")).size(buttonSize).with(tb -> UIUtils.tooltip(tb, "@guide.maptag.delete")).disabled(tb -> !editor.tags.containsKey("MFE.Graphs"));
+                }).left();
+
+                t.row();
+
                 t.pane(list).with(p -> {
                     paneList = p;
                     p.setScrollingDisabled(false, false);
@@ -134,7 +153,7 @@ public class GuideSeqImage extends GridImage{
                         }
                     });
                 }).growX().left();
-            }, minimize).setCollapsed(true, () -> minimize)).maxSize(400f, 500f).growX();
+            }, minimize).setCollapsed(true, () -> minimize).setDirection(true, true)).maxSize(400f, 500f).growX();
         }
 
         public void setNeedsRebuild(){
@@ -154,8 +173,9 @@ public class GuideSeqImage extends GridImage{
 
         public void rebuildList(){
             list.clear();
+            list.defaults().pad(2f).padBottom(4f);
             for(var guide : guides){
-                list.table(guide::buildConfigure).padBottom(2f).growX();
+                list.table(guide::buildConfigure).growX();
                 list.row();
             }
             needsRebuild = false;

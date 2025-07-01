@@ -80,7 +80,7 @@ public class BaseGuide{
 
             title.button(b -> b.image().size(buttonSize).update(i -> i.setColor(color)), Styles.flati, () -> Vars.ui.picker.show(color, true, c -> color.set(c))).size(buttonSize);
 
-            title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + Core.bundle.get(name.substring(1)) + " ?", () -> {
+            title.button("" + Iconc.cancel, Styles.flatt, () -> Vars.ui.showConfirm("Delete " + name + " ?", () -> {
                 onRemove();
                 guidesImage.guides.remove(this);
                 guidesImage.cfgPop.setNeedsRebuild();
